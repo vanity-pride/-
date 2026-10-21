@@ -1,0 +1,2337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日打卡记录系统</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📅</text></svg>">
+<style>
+:root{
+  --bg:#f6f1e7;
+  --card:#fffdf8;
+  --border:#e9dfc9;
+  --text:#2e2820;
+  --muted:#8b8172;
+  --red:#c2402b;
+  --red-deep:#a02f1d;
+  --red-soft:#fbe9e2;
+  --green:#2e8b57;
+  --green-soft:#e8f4ec;
+  --track:#efe7d4;
+  --shadow:0 1px 2px rgba(70,52,20,.04),0 8px 24px rgba(70,52,20,.07);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased}
+body{
+  font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6;
+}
+.app{max-width:920px;margin:0 auto;padding:28px 20px 80px}
+code{background:#f4efe3;border-radius:5px;padding:1px 6px;font-size:12px;font-family:Consolas,Menlo,monospace}
+.muted{color:var(--muted)}
+.up{color:var(--red)}.down{color:var(--green)}
+
+/* ---------- 头部 Hero ---------- */
+.hero{
+  background:linear-gradient(135deg,#b23a25 0%,#c8552f 55%,#d97a45 100%);
+  border-radius:22px;padding:22px 26px;color:#fff;position:relative;overflow:hidden;
+  box-shadow:0 12px 32px rgba(162,47,29,.28);margin-bottom:20px;
+}
+.hero::after{content:"";position:absolute;right:-46px;top:-46px;width:180px;height:180px;
+  border-radius:50%;background:rgba(255,255,255,.08)}
+.hero::before{content:"";position:absolute;right:60px;bottom:-70px;width:140px;height:140px;
+  border-radius:50%;background:rgba(255,255,255,.06)}
+.hero-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  position:relative;z-index:1}
+.hero-title{display:flex;align-items:center;gap:12px}
+.hero-title .seal{
+  width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.2);
+  border:1px solid rgba(255,255,255,.35);color:#fff;display:inline-flex;align-items:center;
+  justify-content:center;font-size:18px;font-weight:700;backdrop-filter:blur(4px);
+}
+.hero-title h1{font-size:22px;letter-spacing:3px;font-weight:600}
+.hero-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px}
+.hero-meta .date-chip{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);
+  padding:4px 14px;border-radius:999px}
+.streak{background:linear-gradient(135deg,#fff3e2,#ffe4d1);color:#b3541e;
+  padding:4px 12px;border-radius:999px;font-size:13px;font-weight:600}
+.hero-body{display:flex;align-items:center;gap:26px;margin-top:18px;position:relative;z-index:1}
+.ring{width:104px;height:104px;flex:none}
+.ring-track{fill:none;stroke:rgba(255,255,255,.25);stroke-width:9}
+.ring-fill{fill:none;stroke:#fff;stroke-width:9;stroke-linecap:round;
+  transition:stroke-dashoffset .55s cubic-bezier(.4,0,.2,1)}
+.ring-num{fill:#fff;font-size:21px;font-weight:700}
+.ring-label{fill:rgba(255,255,255,.78);font-size:11px;letter-spacing:2px}
+.hero-stats{display:flex;gap:14px;flex-wrap:wrap;flex:1}
+.stat{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);
+  border-radius:14px;padding:10px 18px;min-width:150px;flex:1}
+.stat .label{font-size:12px;color:rgba(255,255,255,.82);margin-bottom:2px}
+.stat .label small{opacity:.75;font-size:11px}
+.stat .value{font-size:23px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.5px}
+.hero-progress{margin-top:16px;position:relative;z-index:1}
+.hero-progress .progress-track{height:8px;background:rgba(255,255,255,.22);border-radius:999px;overflow:hidden}
+.hero-progress .progress-fill{height:100%;width:0;background:#fff;border-radius:999px;
+  transition:width .45s cubic-bezier(.4,0,.2,1)}
+.hero-hint{margin-top:10px;font-size:13px;color:rgba(255,255,255,.85);position:relative;z-index:1}
+
+/* ---------- 页签 ---------- */
+.tabs{display:flex;gap:6px;background:#ece5d5;padding:5px;border-radius:14px;margin-bottom:20px}
+.tab{
+  flex:1;border:none;background:transparent;padding:10px 0;border-radius:10px;font-size:15px;
+  color:var(--muted);cursor:pointer;transition:.18s;font-family:inherit;letter-spacing:1px;
+}
+.tab:hover{color:var(--text)}
+.tab.active{background:var(--card);color:var(--red-deep);font-weight:600;
+  box-shadow:0 2px 8px rgba(70,52,20,.14)}
+
+.panel{display:none}
+.panel.active{display:block;animation:fade .28s ease}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ---------- 卡片 ---------- */
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;
+  padding:22px;margin-bottom:18px;box-shadow:var(--shadow)}
+.card h2{font-size:14px;color:#6f6455;font-weight:600;margin-bottom:16px;letter-spacing:1px;
+  display:flex;align-items:center;gap:8px}
+.card h2::before{content:"";width:4px;height:14px;border-radius:2px;background:var(--red);flex:none}
+.card h2 .sub{font-size:12px;color:var(--muted);font-weight:400;margin-left:auto}
+
+/* ---------- 昨日回顾 ---------- */
+.recap{border-left:4px solid #e0b487;background:linear-gradient(180deg,#fffaf2,#fffdf8)}
+.recap-top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.recap-top .t{font-weight:700;font-size:15px}
+.recap-top .d{color:var(--muted);font-size:13px}
+.chip{display:inline-block;background:#f6ecd4;color:#8a6d3a;border-radius:999px;
+  padding:2px 12px;font-size:12px;font-weight:600}
+.chip-val{font-variant-numeric:tabular-nums;font-weight:700}
+.recap-msg{font-size:13px;color:var(--muted);margin-top:6px}
+
+/* ---------- 分类树 ---------- */
+.group{margin-bottom:14px;background:var(--card);border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
+.group-header{display:flex;align-items:center;gap:10px;padding:13px 18px;cursor:pointer;
+  user-select:none;background:linear-gradient(180deg,#fffdf6,#fbf5e8);transition:background .15s}
+.group-header:hover{background:#faf1de}
+.group-header .arrow{color:var(--muted);font-size:12px;transition:transform .15s}
+.group-header .g-name{font-weight:700;font-size:15px}
+.group-header .g-count{margin-left:auto;font-size:12px;color:#8a6d3a;background:#f6ecd4;
+  border-radius:999px;padding:2px 10px;font-variant-numeric:tabular-nums}
+.group-body{padding:12px 12px 4px}
+.group .group{margin-bottom:10px;box-shadow:none}
+
+/* ---------- 打卡卡片 / 数值卡片 ---------- */
+.check-item,.num-item{
+  display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);
+  border-left:3px solid transparent;border-radius:14px;padding:15px 18px;margin-bottom:12px;
+  cursor:pointer;user-select:none;
+  transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease,background .15s ease;
+}
+.check-item:hover,.num-item:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.num-item{cursor:default}
+.check-item.pending{border-left-color:var(--red);background:#fffaf6}
+.check-item .box{
+  width:28px;height:28px;border-radius:50%;border:2px solid #d9cfb8;flex:none;
+  display:flex;align-items:center;justify-content:center;color:transparent;font-weight:800;font-size:15px;
+  transition:.18s;background:#fff;
+}
+.check-item .name{font-size:16px;font-weight:600;flex:1;min-width:0}
+.check-item .status{font-size:13px;color:var(--muted);white-space:nowrap}
+.check-item.done{border-color:#eec5b6;background:linear-gradient(180deg,var(--red-soft),#fff8f5)}
+.check-item.done .box{background:var(--red);border-color:var(--red);color:#fff;animation:pop .25s ease}
+@keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+.check-item.done .name{color:var(--red-deep)}
+.check-item.done .status{color:var(--red);font-weight:600}
+.pend-tag{font-size:11px;color:var(--red-deep);background:var(--red-soft);border-radius:6px;
+  padding:1px 8px;font-weight:600;white-space:nowrap;flex:none}
+.item-benefit{font-size:12px;color:#b3541e;background:#fdf3e6;border-radius:6px;
+  padding:1px 7px;white-space:nowrap;flex:none}
+.num-item .num-icon{
+  width:28px;height:28px;border-radius:8px;background:#eef3f6;border:1px solid #d8e2e8;color:#3a6b84;
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex:none;
+}
+.num-item .num-name{flex:1;font-size:15px;font-weight:600;min-width:0}
+.num-item .num-name .num-hint{display:block;font-size:11px;color:var(--muted);font-weight:400}
+.num-item .num-input{
+  width:110px;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:15px;
+  text-align:right;font-family:inherit;color:var(--text);outline:none;transition:.15s;background:#fff;
+}
+.num-item .num-input:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(194,64,43,.12)}
+.num-item .save-btn{
+  border:none;background:linear-gradient(135deg,var(--red),#d9633f);color:#fff;border-radius:10px;
+  padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;flex:none;
+}
+.num-item .save-btn:hover{filter:brightness(1.07);box-shadow:0 4px 10px rgba(194,64,43,.25)}
+.num-item.saved{border-color:#eec5b6;background:linear-gradient(180deg,var(--red-soft),#fff)}
+
+/* ---------- 多次打卡卡片 ---------- */
+.multi-item{
+  display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);
+  border-left:3px solid transparent;border-radius:14px;padding:15px 18px;margin-bottom:12px;
+  user-select:none;
+  transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease,background .15s ease;
+}
+.multi-item:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.multi-item.pending{border-left-color:var(--red);background:#fffaf6}
+.multi-item .m-icon{
+  width:28px;height:28px;border-radius:8px;background:#f3ecf9;border:1px solid #e0d2ee;color:#6b4a8a;
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex:none;
+}
+.multi-item .m-name{flex:1;font-size:15px;font-weight:600;min-width:0}
+.multi-item .m-name .m-hint{display:block;font-size:11px;color:var(--muted);font-weight:400}
+.multi-item .dots{display:flex;gap:7px;flex:none;align-items:center}
+.m-dot{
+  width:22px;height:22px;border-radius:50%;border:2px solid #d9cfb8;background:#fff;cursor:pointer;
+  padding:0;transition:.15s;display:flex;align-items:center;justify-content:center;flex:none;
+}
+.m-dot:hover{border-color:#c9a9e0}
+.m-dot.on{background:var(--red);border-color:var(--red)}
+.m-dot.on::after{content:"";width:8px;height:8px;border-radius:50%;background:#fff}
+.mv-text{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:#5d5346;
+  min-width:40px;text-align:center;white-space:nowrap}
+.m-counter{display:flex;align-items:center;gap:6px;flex:none}
+.m-counter button{
+  width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:#fff;
+  font-size:15px;cursor:pointer;color:var(--text);font-family:inherit;transition:.15s;flex:none;
+  display:flex;align-items:center;justify-content:center;
+}
+.m-counter button:hover{border-color:#c9a9e0;color:#6b4a8a}
+.multi-item .m-tag{font-size:12px;color:#b3541e;background:#fdf3e6;border-radius:6px;
+  padding:1px 7px;white-space:nowrap;flex:none;font-variant-numeric:tabular-nums}
+.multi-item.done{border-color:#eec5b6;background:linear-gradient(180deg,var(--red-soft),#fff8f5)}
+.multi-item.done .m-tag{background:var(--red);color:#fff}
+.pend-tag.multi{color:#6b4a8a;background:#f3ecf9}
+
+.empty{text-align:center;color:var(--muted);padding:34px 0;font-size:14px}
+.empty::before{content:"🌱";display:block;font-size:26px;margin-bottom:8px}
+
+/* ---------- 历史：目标 ---------- */
+.goal-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.goal-row input{
+  border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;
+  font-family:inherit;background:#fff;color:var(--text);outline:none;transition:.15s;
+}
+.goal-row input:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(194,64,43,.12)}
+#goalInput{width:200px}
+#goalNote{flex:1;min-width:160px}
+.goal-status{font-size:13px;color:var(--muted)}
+.goal-status b{font-variant-numeric:tabular-nums}
+.goal-bar{margin-top:8px;height:10px;background:var(--track);border-radius:999px;overflow:hidden}
+.goal-bar>i{display:block;height:100%;background:linear-gradient(90deg,#e0673f,var(--red));
+  border-radius:999px;transition:width .5s ease}
+
+/* ---------- 历史：图表 ---------- */
+.chart-wrap{width:100%}
+.chart-wrap svg{width:100%;height:auto;display:block}
+.chart-legend{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-top:10px;flex-wrap:wrap}
+.chart-legend .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.trend-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.trend-grid h3{font-size:13px;color:var(--muted);font-weight:600;margin-bottom:8px;letter-spacing:1px}
+
+/* ---------- 历史：热力图 ---------- */
+.heat-wrap{overflow-x:auto;padding-bottom:4px}
+.heat-legend{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);margin-top:10px}
+.heat-legend .cell{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+/* ---------- 历史：贡献 ---------- */
+.contrib-row{display:grid;grid-template-columns:130px 1fr 84px 120px;align-items:center;
+  gap:12px;padding:7px 0}
+.contrib-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.contrib-val{font-size:14px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.contrib-val.pos{color:var(--red)}.contrib-val.neg{color:var(--green)}
+.contrib-sub{font-size:11px;color:var(--muted);text-align:right}
+.bar{height:10px;background:var(--track);border-radius:999px;overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:999px;transition:width .5s ease}
+
+/* ---------- 历史：统计行 ---------- */
+.rate-row{display:grid;grid-template-columns:250px 1fr 46px;align-items:center;gap:12px;padding:7px 0}
+.rate-name{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rate-val{font-size:13px;color:var(--red-deep);font-weight:700;text-align:right}
+.rate-name .stat-tag{font-size:11px;border-radius:6px;padding:1px 7px;margin-left:6px;flex:none}
+.stat-tag.archived{color:#8a8577;background:#f2ecdd;border:1px solid #ddd3bd}
+.stat-tag.multi{color:#6b4a8a;background:#efe7f6}
+.stat-tag.number{color:#2a6b8a;background:#e3f0f7}
+.delta{font-size:12px;margin-left:6px;font-weight:600}
+.delta.up{color:var(--red)}
+.delta.down{color:var(--green)}
+.rate-row.is-archived .rate-name{color:#9a9284}
+.rate-row.is-archived .bar{opacity:.55}
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.card-head .month-jump{flex:none}
+
+/* ---------- 历史：月度归档表 ---------- */
+#archiveTable td.month-cell, #archiveTable th.month-cell{
+  text-align:left;color:#5d5346;font-variant-numeric:tabular-nums;
+  position:sticky;left:0;background:#fff;box-shadow:1px 0 0 #f0e7d5;cursor:pointer;font-weight:600
+}
+#archiveTable thead th.month-cell{left:0;background:#f7f1e3;z-index:3}
+#archiveTable tbody tr:hover td.month-cell{background:#fbf7ee}
+#archiveTable tr.cur-month td.month-cell{color:var(--red-deep)}
+#archiveTable .arc-flag{font-size:11px;color:#8a8577;margin-left:4px}
+#archiveTable td.arc-cell{font-variant-numeric:tabular-nums}
+#archiveTable td.arc-cell.hot{color:var(--red);font-weight:600}
+#archiveTable tr.is-archived td.month-cell{color:#9a9284}
+
+/* ---------- 历史：明细表 ---------- */
+.table-wrap{overflow:auto;max-height:560px;border:1px solid var(--border);border-radius:14px}
+table{border-collapse:collapse;width:100%;font-size:14px;background:#fff}
+thead th{
+  position:sticky;top:0;background:#f7f1e3;z-index:2;padding:10px 12px;font-size:13px;color:#6f6455;
+  border-bottom:1px solid var(--border);white-space:nowrap;font-weight:600;
+}
+thead th:first-child{left:0;z-index:3}
+tbody td{padding:9px 12px;border-bottom:1px solid #f3ecdd;text-align:center;white-space:nowrap}
+tbody tr:hover{background:#fbf7ee}
+td.date-cell{text-align:left;color:#5d5346;font-variant-numeric:tabular-nums;
+  position:sticky;left:0;background:#fff;box-shadow:1px 0 0 #f0e7d5}
+tbody tr:hover td.date-cell{background:#fbf7ee}
+td .wd{color:var(--muted);font-size:12px;margin-left:6px}
+td.done-cell{color:var(--red);font-weight:800}
+td.off-cell{color:#c9c0ae}
+#historyTable tr.arch-summary-row td{background:#faf7ef;border-top:1px solid #e3d9c2}
+.arch-chip{display:inline-block;font-size:11px;color:#8a8577;background:#f2ecdd;border:1px solid #ddd3bd;border-radius:8px;padding:1px 7px;white-space:nowrap}
+td .mb{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+td .mb.ok{color:var(--red)}
+td .mb.no{color:#c9c0ae}
+td.money-cell{font-variant-numeric:tabular-nums;font-weight:600}
+td.money-cell.pos{color:var(--red)}
+td.money-cell.neg{color:var(--green)}
+.mini-btn{
+  border:1px solid var(--border);background:#fff;border-radius:7px;padding:3px 12px;font-size:12px;
+  cursor:pointer;color:var(--muted);font-family:inherit;transition:.15s;
+}
+.mini-btn:hover{color:var(--red-deep);border-color:#e5b7a8;background:#fffaf6}
+
+/* ---------- 历史：周报 / 月报 ---------- */
+.report-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.report-grid{grid-template-columns:1fr}}
+.report-card{border:1px solid var(--border);border-radius:14px;padding:16px 18px;background:#fbf8f1}
+.rp-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.rp-title{font-weight:800;font-size:15px;color:#4a4436}
+.rp-range{font-size:12px;color:#8a8577}
+.rp-big{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.rp-num{font-size:28px;font-weight:800;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.rp-num.pos{color:var(--red)}
+.rp-num.neg{color:var(--green)}
+.rp-sub{font-size:12px;color:#8a8577;margin-top:2px}
+.rp-bar{height:8px;border-radius:99px;background:#efe9db;overflow:hidden;margin:12px 0 6px}
+.rp-bar>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#e0673f,var(--red))}
+.rp-days{display:flex;gap:5px;margin:14px 0 4px}
+.rp-day{flex:1;text-align:center;min-width:0}
+.rp-day .bar{height:46px;display:flex;align-items:flex-end}
+.rp-day .bar i{display:block;width:100%;border-radius:5px 5px 3px 3px;background:#e8dfd0;min-height:2px}
+.rp-day .bar i.on{background:linear-gradient(180deg,#e0673f,var(--red))}
+.rp-day .lb{font-size:10px;color:#8a8577;margin-top:4px;white-space:nowrap}
+.rp-day.today .lb{color:var(--red);font-weight:800}
+.rp-day.future .bar i{background:repeating-linear-gradient(45deg,#f2ecdd,#f2ecdd 3px,#e9e1cf 3px,#e9e1cf 6px)}
+.rp-rows{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:12.5px;margin:10px 0 0}
+.rp-rows dt{color:#8a8577;white-space:nowrap}
+.rp-rows dd{margin:0;text-align:right;font-weight:700;color:#4a4436;font-variant-numeric:tabular-nums}
+.rp-balance{margin-top:12px;border-top:1px dashed var(--border);padding-top:10px;display:grid;gap:6px}
+.rb-row{display:flex;justify-content:space-between;font-size:12.5px;color:#8a8577}
+.rb-row b{font-variant-numeric:tabular-nums;color:#4a4436}
+.rb-row.cur{color:#4a4436;font-weight:700}
+.rb-row.cur b{font-size:16px}
+.rb-row.fc b{color:var(--red-deep)}
+
+/* ---------- 历史：明细表（折叠 / 筛选） ---------- */
+.detail-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.detail-summary{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);
+  background:#fff;border-radius:10px;padding:8px 16px;font-size:14px;font-weight:600;color:var(--text);
+  cursor:pointer;font-family:inherit;transition:.15s}
+.detail-summary:hover{border-color:#e5b7a8;background:#fffaf6}
+.detail-summary .ds-icon{color:var(--muted);font-size:12px}
+.detail-meta{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.detail-controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:14px 0 12px}
+.range-group{display:flex;gap:4px;background:#ece5d5;padding:4px;border-radius:10px;flex-wrap:wrap}
+.range-btn{border:none;background:transparent;padding:6px 14px;border-radius:8px;font-size:13px;
+  color:var(--muted);cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap}
+.range-btn:hover{color:var(--text)}
+.range-btn.active{background:#fff;color:var(--red-deep);font-weight:600;
+  box-shadow:0 1px 4px rgba(70,52,20,.12)}
+.month-jump{border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;
+  font-family:inherit;background:#fff;color:var(--text);outline:none;cursor:pointer}
+.detail-foot{display:flex;align-items:center;gap:14px;margin-top:12px;flex-wrap:wrap}
+.detail-foot .mini-btn{padding:7px 18px;font-size:13px}
+#detailCount{font-size:12px}
+
+/* ---------- 结构管理 ---------- */
+.form-grid{display:grid;grid-template-columns:1.4fr 1fr 1.1fr 0.8fr 0.7fr;gap:10px;margin-bottom:12px}
+.form-grid select,.form-grid input{
+  border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;
+  font-family:inherit;background:#fff;color:var(--text);outline:none;transition:.15s;
+}
+.form-grid select:focus,.form-grid input:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(194,64,43,.12)}
+.form-grid input:disabled,.form-grid select:disabled{background:#f4efe3;color:#b3a992;cursor:not-allowed}
+.form-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.form-tip{font-size:12px;color:var(--muted);margin-top:12px;line-height:1.7}
+.btn{
+  border:none;background:linear-gradient(135deg,var(--red),#d9633f);color:#fff;font-size:15px;font-weight:600;
+  border-radius:10px;padding:10px 22px;cursor:pointer;transition:.15s;font-family:inherit;
+}
+.btn:hover{filter:brightness(1.05);box-shadow:0 4px 12px rgba(194,64,43,.3)}
+.btn:active{transform:scale(.97)}
+.btn.ghost{background:#fff;color:var(--muted);border:1px solid var(--border)}
+.btn.ghost:hover{color:var(--text);filter:none;box-shadow:none}
+.m-row{display:flex;align-items:center;gap:8px;padding:9px 6px;border-bottom:1px dashed var(--border);flex-wrap:wrap}
+.m-row:last-child{border-bottom:none}
+.m-arrow{width:14px;color:var(--muted);font-size:11px;flex:none;text-align:center}
+.m-name{font-weight:600;font-size:14px}
+.m-badge{font-size:11px;border-radius:6px;padding:1px 8px;flex:none}
+.m-badge.group{color:#8a6d3a;background:#f6ecd4}
+.m-badge.check{color:#8a2f22;background:#fbe9e2}
+.m-badge.number{color:#2a6b8a;background:#e3f0f7}
+.m-badge.multi{color:#6b4a8a;background:#f3ecf9}
+.m-benefit{font-size:12px;color:#b3541e;font-weight:600;white-space:nowrap}
+.m-actions{margin-left:auto;display:flex;gap:6px}
+.m-row.is-archived{background:#faf7ef}
+.m-row.is-archived .m-name{color:#8a8577}
+.m-rename-input{font:inherit;font-size:14px;font-weight:600;padding:3px 8px;border:1px solid #d8cfb8;border-radius:6px;width:150px;background:#fff}
+.m-rename-input:focus{outline:none;border-color:var(--red)}
+.m-btn.danger{color:#8a2f22;border-color:#e5b7a8}
+.m-btn.danger:hover{background:#fbe9e2}
+.m-badge.archived{color:#8a8577;background:#f2ecdd;border:1px solid #ddd3bd}
+.m-actions button{
+  border:1px solid var(--border);background:#fff;border-radius:7px;padding:4px 10px;font-size:12px;
+  cursor:pointer;color:var(--muted);font-family:inherit;transition:.15s;
+}
+.m-actions button:hover{color:var(--red-deep);border-color:#e5b7a8}
+
+/* ---------- 备份 ---------- */
+.backup-list{margin-top:14px;border:1px dashed var(--border);border-radius:12px;overflow:hidden}
+.backup-row{display:flex;align-items:center;gap:10px;padding:8px 14px;font-size:13px;
+  border-bottom:1px dashed var(--border)}
+.backup-row:last-child{border-bottom:none}
+.backup-row .bn{font-family:Consolas,Menlo,monospace;color:#5d5346;flex:1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.backup-row .bs,.backup-row .bt{color:var(--muted);font-size:12px;white-space:nowrap}
+
+/* ---------- 补录弹窗 ---------- */
+.modal-mask{position:fixed;inset:0;background:rgba(46,40,32,.48);display:none;
+  align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal-mask.show{display:flex;animation:fade .2s ease}
+.modal{background:var(--card);border-radius:18px;width:100%;max-width:540px;max-height:82vh;
+  display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.3);overflow:hidden}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 22px;
+  border-bottom:1px solid var(--border)}
+.modal-head h3{font-size:16px;font-weight:700}
+.modal-close{border:none;background:none;font-size:22px;color:var(--muted);cursor:pointer;
+  line-height:1;padding:2px 6px;border-radius:8px}
+.modal-close:hover{color:var(--text);background:#f4efe3}
+.modal-body{overflow:auto;padding:8px 22px}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:14px 22px;border-top:1px solid var(--border)}
+.day-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border)}
+.day-row:last-child{border-bottom:none}
+.day-name{flex:1;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;min-width:0}
+.day-toggle{
+  border:1px solid var(--border);background:#fff;border-radius:999px;padding:6px 18px;font-size:13px;
+  cursor:pointer;color:var(--muted);font-family:inherit;transition:.15s;flex:none;min-width:96px;
+}
+.day-toggle.on{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}
+.day-input{
+  width:110px;border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:14px;
+  text-align:right;font-family:inherit;color:var(--text);outline:none;background:#fff;flex:none;
+}
+.day-input:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(194,64,43,.12)}
+.day-multi{display:flex;align-items:center;gap:7px;flex:none}
+.day-multi .m-dot{width:20px;height:20px}
+.day-multi .m-step{width:24px;height:24px;border-radius:7px;border:1px solid var(--border);background:#fff;
+  font-size:14px;cursor:pointer;color:var(--text);font-family:inherit;transition:.15s;flex:none;
+  display:flex;align-items:center;justify-content:center}
+.day-multi .m-step:hover{border-color:#c9a9e0;color:#6b4a8a}
+
+/* ---------- Toast ---------- */
+.toast{
+  position:fixed;left:50%;bottom:40px;transform:translate(-50%,16px);background:#332b21;color:#fff;
+  padding:10px 22px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;
+  box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:120;max-width:80vw;
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:720px){
+  .hero-body{flex-direction:column;align-items:flex-start;gap:16px}
+  .trend-grid{grid-template-columns:1fr}
+  .contrib-row{grid-template-columns:100px 1fr 76px}
+  .contrib-sub{display:none}
+  .rate-row{grid-template-columns:170px 1fr 42px}
+  .form-grid{grid-template-columns:1fr 1fr}
+  .app{padding:18px 12px 60px}
+  .num-item{flex-wrap:wrap}
+  .check-item{flex-wrap:wrap}
+  .multi-item{flex-wrap:wrap}
+  #goalInput{width:100%}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hero">
+    <div class="hero-top">
+      <div class="hero-title">
+        <span class="seal">卡</span>
+        <h1>每日打卡</h1>
+      </div>
+      <div class="hero-meta">
+        <span class="date-chip" id="todayText"></span>
+        <span class="streak" id="streakBadge" style="display:none"></span>
+      </div>
+    </div>
+    <div class="hero-body">
+      <svg viewBox="0 0 110 110" class="ring" role="img" aria-label="今日完成进度">
+        <circle cx="55" cy="55" r="46" class="ring-track"/>
+        <circle cx="55" cy="55" r="46" class="ring-fill" id="ringFill" transform="rotate(-90 55 55)"/>
+        <text x="55" y="53" class="ring-num" id="ringNum" text-anchor="middle">0/0</text>
+        <text x="55" y="72" class="ring-label" text-anchor="middle">已完成</text>
+      </svg>
+      <div class="hero-stats">
+        <div class="stat">
+          <div class="label">今日收益</div>
+          <div class="value" id="todayGain">0.00</div>
+        </div>
+        <div class="stat">
+          <div class="label">累计收益 <small id="cumInitial"></small></div>
+          <div class="value" id="cumBenefit">-8407.00</div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-progress">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+    <p class="hero-hint" id="progressHint"></p>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="today">今日打卡</button>
+    <button class="tab" data-tab="history">历史记录</button>
+    <button class="tab" data-tab="manage">结构管理</button>
+  </nav>
+
+  <section class="panel active" id="tab-today">
+    <div class="card recap" id="recapCard" style="display:none">
+      <div class="recap-top">
+        <span class="t">昨日回顾</span>
+        <span class="d" id="recapDate"></span>
+        <span class="chip">完成 <span id="recapDone">0/0</span></span>
+        <span class="chip">收益 <span class="chip-val" id="recapGain"></span></span>
+      </div>
+      <div class="recap-msg" id="recapMsg"></div>
+    </div>
+    <div id="todayList"></div>
+  </section>
+
+  <section class="panel" id="tab-history">
+    <div class="card">
+      <h2>收益目标 <span class="sub">设置后收益曲线会画出目标线</span></h2>
+      <div class="goal-row">
+        <input id="goalInput" type="number" step="any" placeholder="目标累计收益，如 -7900">
+        <input id="goalNote" maxlength="30" placeholder="备注（可选），如：年底回本">
+        <button class="btn" id="goalSave">保存目标</button>
+        <button class="btn ghost" id="goalClear">清除</button>
+      </div>
+      <div class="goal-status" id="goalStatus"></div>
+    </div>
+    <div class="card">
+      <h2>累计收益变化曲线</h2>
+      <div class="chart-wrap" id="benefitChart"></div>
+      <div class="chart-legend">
+        <span><span class="dot" style="background:#c2402b"></span>累计收益<span id="benefitLegendInit"></span></span>
+        <span><span class="dot" style="background:#8a6d3a"></span>收益目标线</span>
+        <span><span class="dot" style="background:#eec5b6"></span>零线（虚线）</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>近 365 天打卡热力图 <span class="sub">颜色越深，当天完成比例越高</span></h2>
+      <div class="heat-wrap" id="heatmap"></div>
+      <div class="heat-legend">
+        <span>少</span>
+        <span class="cell" style="background:#f2ecdd"></span>
+        <span class="cell" style="background:#f7d8c6"></span>
+        <span class="cell" style="background:#eda87f"></span>
+        <span class="cell" style="background:#dd6f4c"></span>
+        <span class="cell" style="background:#c2402b"></span>
+        <span>多 · 悬停格子查看当日明细</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>周报 · 月报 <span class="sub">自然周（周一~周日）/ 自然月 · 环比按<b>日均收益</b>口径</span></h2>
+      <div class="report-grid">
+        <div class="report-card" id="weekReport"></div>
+        <div class="report-card" id="monthReport"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>完成率趋势 <span class="sub">按周 / 月聚合，悬停查看收益</span></h2>
+      <div class="trend-grid">
+        <div><h3>近 12 周</h3><div class="chart-wrap" id="weekChart"></div></div>
+        <div><h3>近 12 月</h3><div class="chart-wrap" id="monthChart"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>分类贡献 <span class="sub">按顶级分类统计累计收益与活跃天数</span></h2>
+      <div id="contribList"></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <h2>各项目统计 <span class="sub">按<b>自然月</b>统计 · 勾选项/多次项为完成率，数值项为累计 / 日均</span></h2>
+        <select class="month-jump" id="statMonth" title="选择统计月份（自然月）"></select>
+      </div>
+      <div id="rateList"></div>
+    </div>
+    <div class="card">
+      <h2>月度归档 <span class="sub">每个自然月一行的汇总（分母 = 当月已过天数）· 带 * 为已归档项目 · 点击月份名查看当月明细</span></h2>
+      <div class="table-wrap" style="max-height:520px"><table id="archiveTable"></table></div>
+    </div>
+    <div class="card">
+      <h2>每日打卡明细 <span class="sub">勾选项 1 = 已完成；数值项为当日数值；过去日期可补录</span></h2>
+      <div class="detail-bar">
+        <button class="detail-summary" id="detailToggle">
+          <span class="ds-icon" id="detailIcon">▸</span>
+          <span id="detailSummary">展开明细</span>
+        </button>
+        <span class="detail-meta" id="detailMeta"></span>
+      </div>
+      <div class="detail-controls" id="detailControls" style="display:none">
+        <div class="range-group" id="rangeGroup">
+          <button class="range-btn" data-range="30">最近 30 天</button>
+          <button class="range-btn" data-range="90">最近 90 天</button>
+          <button class="range-btn" data-range="year">今年</button>
+          <button class="range-btn" data-range="all">全部</button>
+        </div>
+        <select class="month-jump" id="monthJump"></select>
+        <button class="mini-btn" id="archColBtn" title="归档项目的历史数据默认折叠为汇总行；展开后按逐日列显示">归档列：已折叠</button>
+      </div>
+      <div class="table-wrap" id="detailTableWrap" style="display:none">
+        <table id="historyTable"></table>
+      </div>
+      <div class="detail-foot" id="detailFoot" style="display:none">
+        <button class="mini-btn" id="loadMoreBtn">加载更早</button>
+        <span class="muted" id="detailCount"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="tab-manage">
+    <div class="card">
+      <h2 id="formTitle">添加项目</h2>
+      <div class="form-grid">
+        <input id="mName" maxlength="20" placeholder="名称，如：养生 / 八部金刚功 / 专注时间">
+        <select id="mType">
+          <option value="check">勾选项</option>
+          <option value="multi">多次打卡项</option>
+          <option value="number">数值项</option>
+          <option value="group">分类</option>
+        </select>
+        <select id="mParent"><option value="">（顶级）</option></select>
+        <input id="mBenefit" type="number" step="any" placeholder="收益" title="完成一次获得的收益金额，可为负">
+        <input id="mTarget" type="number" min="1" max="99" step="1" placeholder="目标次数" title="当日完成多少次才算达标（1~99）">
+      </div>
+      <div class="form-actions">
+        <button class="btn" id="mSubmit">添加</button>
+        <button class="btn ghost" id="mCancel" style="display:none">取消编辑</button>
+      </div>
+      <p class="form-tip">提示：分类可多级嵌套；勾选项可设置「完成一次获得的收益金额」；<b>多次打卡项</b>需设「目标次数」（如八部金刚功每日 4 次），当天记满目标次数才算完成并结算收益；数值项直接以填入数值作为收益，支持负数。</p>
+    </div>
+    <div class="card">
+      <h2>当前结构</h2>
+      <div id="manageTree"></div>
+    </div>
+    <div class="card" id="archiveCard" style="display:none">
+      <h2>归档箱 <span class="sub">已删除（归档）的项目 · 历史数据完整保留，可恢复或永久删除</span></h2>
+      <div id="archiveTree"></div>
+    </div>
+    <div class="card">
+      <h2>数据备份 <span class="sub">自动备份 + 手动备份 + 导出备份包</span></h2>
+      <p class="form-tip" style="margin-top:0;margin-bottom:12px">每次保存数据前都会自动备份到 <code>data/backup/</code>（每天一份，保留最近 30 份）。误删误改时，可关闭服务后用对应备份文件替换 <code>data/打卡记录.xlsx</code> 找回。</p>
+      <div class="form-actions">
+        <button class="btn" id="backupBtn">立即备份</button>
+        <button class="btn ghost" id="exportBtn" title="打包当前数据与全部历史备份，下载后请保存到 U 盘或网盘">导出备份包（zip）</button>
+        <span class="form-tip" id="backupTip" style="margin-top:0"></span>
+      </div>
+      <p class="form-tip" style="margin-top:0">注意：自动备份和本页备份都存在<strong>这台电脑</strong>的硬盘上，硬盘损坏、电脑丢失或整个项目被误删时它们会一起消失。<strong>请每周点一次「导出备份包」</strong>，把下载到的 zip 保存到 U 盘、移动硬盘或网盘——这才是真正救得回数据的一份。</p>
+      <div class="backup-list" id="backupList"></div>
+    </div>
+  </section>
+</div>
+
+<div class="modal-mask" id="dayModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="dayModalTitle">补录</h3>
+      <button class="modal-close" id="dayModalClose">×</button>
+    </div>
+    <div class="modal-body" id="dayModalBody"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="dayModalCancel">取消</button>
+      <button class="btn" id="dayModalSave">保存补录</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const WEEK = ['周日','周一','周二','周三','周四','周五','周六'];
+const TYPE_LABEL = { group: '分类', check: '勾选项', multi: '多次项', number: '数值项' };
+let state = null;
+let settings = { goal: 0, note: '' };
+let histData = null;
+let dayCtx = null;
+const collapsed = {};
+let editingId = null;
+
+async function api(path, method = 'GET', body) {
+  const opt = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body !== undefined) opt.body = JSON.stringify(body);
+  const res = await fetch(path, opt);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || ('请求失败：' + res.status));
+  return data;
+}
+
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+function fmtNum(v) {
+  const n = Number(v || 0);
+  return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
+}
+function fmtMoney(v) {
+  const n = Number(v || 0);
+  return (n > 0 ? '+' : '') + n.toFixed(2);
+}
+function moneyWithArrow(v) {
+  const n = Number(v || 0);
+  return (n > 0 ? '▲ ' : n < 0 ? '▼ ' : '') + fmtMoney(n);
+}
+function moneyClass(v) {
+  return Number(v) >= 0 ? 'pos' : 'neg';
+}
+function sizeText(b) {
+  return b >= 1024 * 1024 ? (b / 1024 / 1024).toFixed(1) + ' MB' : (b / 1024).toFixed(1) + ' KB';
+}
+function isPending(n) {
+  if (n.type === 'group') return n.done < n.total;
+  if (n.type === 'check') return n.value !== 1;
+  if (n.type === 'multi') return n.value < (n.target || 1);
+  return Number(n.value) === 0;
+}
+
+/* ================= 今日打卡 ================= */
+async function refreshToday() {
+  state = await api('/api/state');
+  if (state.warning) toast(state.warning);
+  const d = new Date(state.today + 'T00:00:00');
+  $('#todayText').textContent = `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日 · ${WEEK[d.getDay()]}`;
+
+  const badge = $('#streakBadge');
+  if (state.streak > 0) {
+    badge.textContent = `🔥 连续打卡 ${state.streak} 天`;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+
+  const gain = $('#todayGain');
+  gain.textContent = moneyWithArrow(state.benefit.gain);
+  const cum = $('#cumBenefit');
+  cum.textContent = moneyWithArrow(state.benefit.total);
+  $('#cumInitial').textContent = '（初始 ' + fmtMoney(state.benefit.initial) + '）';
+  $('#benefitLegendInit').textContent = '（初始 ' + fmtMoney(state.benefit.initial) + '）';
+
+  $('#ringNum').textContent = `${state.done}/${state.total}`;
+  const pct = state.total ? state.done / state.total : 0;
+  const C = 2 * Math.PI * 46;
+  const ring = $('#ringFill');
+  ring.style.strokeDasharray = C;
+  ring.style.strokeDashoffset = C * (1 - pct);
+  $('#progressFill').style.width = (pct * 100).toFixed(1) + '%';
+
+  const hint = $('#progressHint');
+  if (state.total === 0) {
+    hint.textContent = '还没有勾选项，请先到「结构管理」添加';
+  } else if (state.done === state.total) {
+    hint.textContent = '🎉 今日勾选已全部完成，继续保持！';
+  } else if (state.done === 0) {
+    hint.textContent = '完成一项后，点击卡片即可打卡；数值项在卡片中直接填数保存';
+  } else {
+    hint.textContent = `加油，还有 ${state.total - state.done} 项未完成`;
+  }
+
+  renderRecap(state.yesterday);
+
+  const list = $('#todayList');
+  list.innerHTML = '';
+  if (!state.tree.length) {
+    list.innerHTML = '<div class="empty">暂无项目，去「结构管理」添加分类和项目吧</div>';
+    return;
+  }
+  state.tree.forEach(n => list.appendChild(buildTodayNode(n)));
+}
+
+function renderRecap(y) {
+  const card = $('#recapCard');
+  if (!y || !y.exists) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const d = new Date(y.date + 'T00:00:00');
+  $('#recapDate').textContent = `${d.getMonth() + 1} 月 ${d.getDate()} 日 ${WEEK[d.getDay()]}`;
+  $('#recapDone').textContent = `${y.done}/${y.total}`;
+  const g = $('#recapGain');
+  g.textContent = fmtMoney(y.gain);
+  g.className = 'chip-val ' + moneyClass(y.gain);
+  let msg;
+  if (y.complete) msg = '昨日全部完成，状态满分 🎉';
+  else if (state.streak === 0) msg = '昨天休息了一天，随时重新开始';
+  else msg = `昨天还有 ${y.total - y.done} 项未完成`;
+  $('#recapMsg').textContent = msg;
+}
+
+function buildTodayNode(n) {
+  if (n.type === 'group') {
+    const wrap = document.createElement('div');
+    wrap.className = 'group';
+    const header = document.createElement('div');
+    header.className = 'group-header';
+    const arrow = document.createElement('span');
+    arrow.className = 'arrow';
+    arrow.textContent = collapsed[n.id] ? '▸' : '▾';
+    const name = document.createElement('span');
+    name.className = 'g-name';
+    name.textContent = n.name;
+    const count = document.createElement('span');
+    count.className = 'g-count';
+    count.textContent = `${n.done}/${n.total}`;
+    header.append(arrow, name, count);
+    const body = document.createElement('div');
+    body.className = 'group-body';
+    body.style.display = collapsed[n.id] ? 'none' : '';
+    header.addEventListener('click', () => {
+      collapsed[n.id] = !collapsed[n.id];
+      arrow.textContent = collapsed[n.id] ? '▸' : '▾';
+      body.style.display = collapsed[n.id] ? 'none' : '';
+    });
+    wrap.append(header, body);
+    const kids = (n.children || []).slice()
+      .sort((a, b) => (isPending(b) ? 1 : 0) - (isPending(a) ? 1 : 0));
+    kids.forEach(c => body.appendChild(buildTodayNode(c)));
+    if (!kids.length) {
+      const e = document.createElement('div');
+      e.className = 'empty';
+      e.textContent = '（空分类，可在结构管理中添加子项）';
+      body.appendChild(e);
+    }
+    return wrap;
+  }
+
+  if (n.type === 'check') {
+    const done = n.value === 1;
+    const el = document.createElement('div');
+    el.className = 'check-item' + (done ? ' done' : ' pending');
+    const box = document.createElement('div');
+    box.className = 'box';
+    box.textContent = '✓';
+    const nm = document.createElement('div');
+    nm.className = 'name';
+    nm.textContent = n.name;
+    const st = document.createElement('div');
+    st.className = 'status';
+    st.textContent = done ? '已完成' : '未完成';
+    el.append(box, nm, st);
+    if (!done) {
+      const tag = document.createElement('span');
+      tag.className = 'pend-tag';
+      tag.textContent = '待完成';
+      el.appendChild(tag);
+    }
+    if (n.benefit) {
+      const b = document.createElement('span');
+      b.className = 'item-benefit';
+      b.textContent = `收益 ${fmtMoney(n.benefit)}`;
+      el.appendChild(b);
+    }
+    el.addEventListener('click', async () => {
+      try {
+        const r = await api('/api/toggle', 'POST', { id: n.id });
+        state = r.state;
+        await refreshToday();
+      } catch (e) { toast(e.message); }
+    });
+    return el;
+  }
+
+  if (n.type === 'multi') {
+    // 多次打卡项：点第 k 个圆点记为 k 次，再点一次减一次；次数 ≥ 目标才算完成
+    const target = n.target || 1;
+    const cur = n.value || 0;
+    const done = cur >= target;
+    const el = document.createElement('div');
+    el.className = 'multi-item' + (done ? ' done' : ' pending');
+
+    const icon = document.createElement('div');
+    icon.className = 'm-icon';
+    icon.textContent = '多';
+
+    const nm = document.createElement('div');
+    nm.className = 'm-name';
+    nm.textContent = n.name;
+    const hint = document.createElement('span');
+    hint.className = 'm-hint';
+    hint.textContent = `目标 ${target} 次，练满才结算收益`;
+    nm.appendChild(hint);
+
+    const setCount = async (k) => {
+      try {
+        const r = await api('/api/count', 'POST', { id: n.id, count: k });
+        state = r.state;
+        await refreshToday();
+      } catch (e) { toast(e.message); }
+    };
+
+    const ctrl = document.createElement('div');
+    if (target <= 12) {
+      ctrl.className = 'dots';
+      for (let k = 1; k <= target; k++) {
+        const d = document.createElement('button');
+        d.type = 'button';
+        d.className = 'm-dot' + (k <= cur ? ' on' : '');
+        d.title = k <= cur ? `已记 ${k} 次（点击减一次）` : `记 ${k} 次`;
+        d.addEventListener('click', () => setCount(cur === k ? k - 1 : k));
+        ctrl.appendChild(d);
+      }
+      const txt = document.createElement('span');
+      txt.className = 'mv-text';
+      txt.textContent = `${cur}/${target}`;
+      ctrl.appendChild(txt);
+    } else {
+      ctrl.className = 'm-counter';
+      const minus = document.createElement('button');
+      minus.type = 'button';
+      minus.textContent = '−';
+      minus.addEventListener('click', () => setCount(Math.max(0, cur - 1)));
+      const txt = document.createElement('span');
+      txt.className = 'mv-text';
+      txt.textContent = `${cur}/${target}`;
+      const plus = document.createElement('button');
+      plus.type = 'button';
+      plus.textContent = '+';
+      plus.addEventListener('click', () => setCount(Math.min(target, cur + 1)));
+      ctrl.append(minus, txt, plus);
+    }
+
+    el.append(icon, nm, ctrl);
+    if (!done) {
+      const tag = document.createElement('span');
+      tag.className = 'pend-tag multi';
+      tag.textContent = '待完成';
+      el.appendChild(tag);
+    }
+    if (n.benefit) {
+      const b = document.createElement('span');
+      b.className = 'm-tag';
+      b.textContent = done ? `已结算 ${fmtMoney(n.benefit)}` : `达标收益 ${fmtMoney(n.benefit)}`;
+      el.appendChild(b);
+    }
+    return el;
+  }
+
+  // 数值项：数值本身即收益，支持负数
+  const el = document.createElement('div');
+  el.className = 'num-item' + (n.value !== 0 ? ' saved' : '');
+  const icon = document.createElement('div');
+  icon.className = 'num-icon';
+  icon.textContent = '¥';
+  const nm = document.createElement('div');
+  nm.className = 'num-name';
+  nm.textContent = n.name;
+  const hint = document.createElement('span');
+  hint.className = 'num-hint';
+  hint.textContent = '填入数值 = 当日收益，可为负';
+  nm.appendChild(hint);
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.step = 'any';
+  input.className = 'num-input';
+  input.value = n.value === 0 ? '' : n.value;
+  input.placeholder = '0';
+  input.title = '输入数值后点击保存';
+  const btn = document.createElement('button');
+  btn.className = 'save-btn';
+  btn.textContent = '保存';
+  const save = async () => {
+    const raw = input.value.trim();
+    let v;
+    if (raw === '') {
+      v = 0;
+    } else {
+      v = Number(raw);
+      if (!isFinite(v)) { toast('请输入有效的数值'); return; }
+    }
+    try {
+      const r = await api('/api/value', 'POST', { id: n.id, value: v });
+      state = r.state;
+      el.classList.add('saved');
+      toast(`已记录 ${n.name}：${fmtMoney(r.value)}`);
+    } catch (e) { toast(e.message); }
+  };
+  btn.addEventListener('click', save);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
+  el.append(icon, nm, input, btn);
+  return el;
+}
+
+/* ================= 历史记录 ================= */
+async function refreshHistory() {
+  const [h, s] = await Promise.all([api('/api/history'), api('/api/settings')]);
+  histData = h;
+  settings = s.settings;
+  if (h.warning) toast(h.warning);
+  $('#goalInput').value = settings.goal || '';
+  $('#goalNote').value = settings.note || '';
+
+  renderGoalStatus(state ? state.benefit.total : (h.benefits.length ? h.benefits[h.benefits.length - 1].total : 0));
+  renderBenefitChart(h.benefits, settings.goal);
+  renderHeatmap(h.heatmap);
+  renderTrend('weekChart', h.weekly);
+  renderTrend('monthChart', h.monthly_trend);
+  renderReport(h);
+  renderContrib(h.contrib);
+  renderStatMonthPicker(h);
+  renderStats();
+  renderArchiveTable(h);
+  renderDetail(h);
+}
+
+function renderGoalStatus(total) {
+  const box = $('#goalStatus');
+  const g = settings.goal;
+  if (!g) {
+    box.innerHTML = '<span class="muted">尚未设置目标。设置后，收益曲线图中会画出目标线。</span>';
+    return;
+  }
+  const diff = total - g;
+  const lo = Math.min(0, g, total);
+  const pct = Math.max(0, Math.min(1, (total - lo) / (g - lo || 1))) * 100;
+  box.innerHTML =
+    `目标 <b class="up">${fmtMoney(g)}</b>${settings.note ? `（${settings.note}）` : ''} · ` +
+    `当前 <b class="${moneyClass(total)}">${fmtMoney(total)}</b> · ` +
+    (diff >= 0 ? `<span class="up">已超出目标 ${fmtMoney(diff)}</span>`
+               : `<span class="down">还差 ${fmtMoney(-diff)}</span>`) +
+    `<div class="bar goal-bar"><i style="width:${pct.toFixed(1)}%"></i></div>`;
+}
+
+/* 累计收益曲线（纯 SVG，无外部依赖） */
+function renderBenefitChart(benefits, goal) {
+  const box = $('#benefitChart');
+  box.innerHTML = '';
+  if (!benefits.length) {
+    box.innerHTML = '<div class="empty">暂无收益数据</div>';
+    return;
+  }
+  const W = 680, H = 230, PL = 62, PR = 20, PT = 20, PB = 32;
+  const iw = W - PL - PR, ih = H - PT - PB;
+  const totals = benefits.map(b => b.total);
+  let lo = Math.min(0, ...totals), hi = Math.max(0, ...totals);
+  if (goal) { lo = Math.min(lo, goal); hi = Math.max(hi, goal); }
+  if (hi === lo) { hi = lo + 1; }
+  const pad = (hi - lo) * 0.08;
+  lo -= pad; hi += pad;
+  const x = i => PL + (benefits.length === 1 ? iw / 2 : i * iw / (benefits.length - 1));
+  const y = v => PT + ih - (v - lo) / (hi - lo) * ih;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="累计收益曲线">`;
+  svg += `<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#c2402b" stop-opacity="0.24"/>
+    <stop offset="100%" stop-color="#c2402b" stop-opacity="0.02"/>
+  </linearGradient></defs>`;
+
+  const ticks = 4;
+  for (let i = 0; i <= ticks; i++) {
+    const v = lo + (hi - lo) * i / ticks;
+    const yy = y(v);
+    svg += `<line x1="${PL}" y1="${yy}" x2="${W - PR}" y2="${yy}" stroke="#efe7d4" stroke-width="1"/>`;
+    svg += `<text x="${PL - 8}" y="${yy + 4}" text-anchor="end" font-size="11" fill="#a4988a">${Math.round(v)}</text>`;
+  }
+  if (lo < 0 && hi > 0) {
+    svg += `<line x1="${PL}" y1="${y(0)}" x2="${W - PR}" y2="${y(0)}" stroke="#c9c0ae" stroke-width="1.2" stroke-dasharray="5,4"/>`;
+    svg += `<text x="${W - PR}" y="${y(0) - 5}" text-anchor="end" font-size="10" fill="#a4988a">0</text>`;
+  }
+  if (goal && goal >= lo && goal <= hi) {
+    svg += `<line x1="${PL}" y1="${y(goal)}" x2="${W - PR}" y2="${y(goal)}" stroke="#8a6d3a" stroke-width="1.4" stroke-dasharray="8,5"/>`;
+    svg += `<text x="${PL + 4}" y="${y(goal) - 6}" font-size="11" font-weight="700" fill="#8a6d3a">目标 ${fmtMoney(goal)}</text>`;
+  }
+  const pts = benefits.map((b, i) => `${x(i).toFixed(1)},${y(b.total).toFixed(1)}`);
+  svg += `<polygon points="${PL},${y(lo)} ${pts.join(' ')} ${x(benefits.length - 1).toFixed(1)},${y(lo)}" fill="url(#ag)"/>`;
+  svg += `<polyline points="${pts.join(' ')}" fill="none" stroke="#c2402b" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  benefits.forEach((b, i) => {
+    svg += `<circle cx="${x(i).toFixed(1)}" cy="${y(b.total).toFixed(1)}" r="3" fill="#c2402b"><title>${b.date}：累计 ${fmtMoney(b.total)}（当日 ${fmtMoney(b.gain)}）</title></circle>`;
+  });
+  const last = benefits[benefits.length - 1];
+  const lx = x(benefits.length - 1), ly = y(last.total);
+  svg += `<circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="4.5" fill="#fff" stroke="#c2402b" stroke-width="2.2"/>`;
+  svg += `<text x="${Math.min(lx - 6, W - PR - 96)}" y="${Math.max(ly - 10, PT + 10)}" text-anchor="end" font-size="12" font-weight="700" fill="#a02f1d">${fmtMoney(last.total)}</text>`;
+  const idxs = benefits.length <= 3 ? benefits.map((_, i) => i) : [0, Math.floor((benefits.length - 1) / 2), benefits.length - 1];
+  idxs.forEach(i => {
+    svg += `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="#a4988a">${benefits[i].date.slice(5)}</text>`;
+  });
+  svg += '</svg>';
+  box.innerHTML = svg;
+}
+
+/* 365 天热力图 */
+function renderHeatmap(hm) {
+  const box = $('#heatmap');
+  box.innerHTML = '';
+  if (!hm.length) { box.innerHTML = '<div class="empty">暂无数据</div>'; return; }
+  const byDate = {};
+  hm.forEach(d => byDate[d.date] = d);
+  const end = new Date(hm[hm.length - 1].date + 'T00:00:00');
+  const first = new Date(hm[0].date + 'T00:00:00');
+  const start = new Date(first);
+  start.setDate(first.getDate() - ((first.getDay() + 6) % 7));
+  const step = 15, cell = 12, left = 30, top = 20;
+  const weeks = Math.ceil(((end - start) / 86400000 + 1) / 7);
+  const W = left + weeks * step + 8, H = top + 7 * step + 4;
+  const colors = ['#f2ecdd', '#f7d8c6', '#eda87f', '#dd6f4c', '#c2402b'];
+  const level = d => {
+    if (!d || !d.total || !d.done) return colors[0];
+    const r = d.done / d.total;
+    return r >= 1 ? colors[4] : r >= 0.75 ? colors[3] : r >= 0.5 ? colors[2] : colors[1];
+  };
+  const iso = dt => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="近365天打卡热力图">`;
+  ['一', '', '三', '', '五', '', '日'].forEach((t, i) => {
+    if (t) svg += `<text x="${left - 6}" y="${top + i * step + cell / 2 + 4}" text-anchor="end" font-size="10" fill="#a4988a">${t}</text>`;
+  });
+  let lastMonth = -1;
+  for (let w = 0; w < weeks; w++) {
+    const monday = new Date(start);
+    monday.setDate(start.getDate() + w * 7);
+    if (monday.getMonth() !== lastMonth && monday <= end) {
+      lastMonth = monday.getMonth();
+      svg += `<text x="${left + w * step}" y="${top - 7}" font-size="10" fill="#a4988a">${monday.getMonth() + 1}月</text>`;
+    }
+    for (let r = 0; r < 7; r++) {
+      const day = new Date(monday);
+      day.setDate(monday.getDate() + r);
+      if (day > end || day < first) continue;
+      const key = iso(day);
+      const d = byDate[key];
+      svg += `<rect x="${left + w * step}" y="${top + r * step}" width="${cell}" height="${cell}" rx="3" fill="${level(d)}">` +
+             `<title>${key}：完成 ${d ? d.done : 0}/${d ? d.total : 0}，收益 ${fmtMoney(d ? d.gain : 0)}</title></rect>`;
+    }
+  }
+  svg += '</svg>';
+  box.innerHTML = svg;
+}
+
+/* 周 / 月趋势柱状图 */
+function renderTrend(id, arr) {
+  const box = $('#' + id);
+  box.innerHTML = '';
+  if (!arr.length) { box.innerHTML = '<div class="empty">暂无数据</div>'; return; }
+  const W = 340, H = 170, PL = 34, PR = 10, PT = 14, PB = 26;
+  const iw = W - PL - PR, ih = H - PT - PB;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="完成率趋势">`;
+  [0, 0.5, 1].forEach(t => {
+    const yy = PT + ih - t * ih;
+    svg += `<line x1="${PL}" y1="${yy}" x2="${W - PR}" y2="${yy}" stroke="#efe7d4" stroke-width="1"/>`;
+    svg += `<text x="${PL - 6}" y="${yy + 4}" text-anchor="end" font-size="10" fill="#a4988a">${Math.round(t * 100)}%</text>`;
+  });
+  const bw = iw / arr.length;
+  arr.forEach((a, i) => {
+    const h = Math.max(a.rate * ih, a.rate > 0 ? 2 : 0);
+    const x = PL + i * bw + bw * 0.18;
+    const w = bw * 0.64;
+    svg += `<rect x="${x.toFixed(1)}" y="${(PT + ih - h).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="#c2402b" opacity="${(0.45 + 0.55 * a.rate).toFixed(2)}">` +
+           `<title>${a.label}：完成 ${a.done}/${a.total}（${Math.round(a.rate * 100)}%），收益 ${fmtMoney(a.gain)}</title></rect>`;
+    if (i % 2 === 0 || arr.length <= 6) {
+      svg += `<text x="${(x + w / 2).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="#a4988a">${a.label}</text>`;
+    }
+  });
+  svg += '</svg>';
+  box.innerHTML = svg;
+}
+
+/* 分类贡献 */
+function renderContrib(list) {
+  const box = $('#contribList');
+  box.innerHTML = '';
+  if (!list.length) { box.innerHTML = '<div class="empty">暂无数据</div>'; return; }
+  const max = Math.max(...list.map(x => Math.abs(x.gain)), 0.01);
+  const sum = list.reduce((s, x) => s + x.gain, 0);
+  list.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'contrib-row';
+    row.innerHTML =
+      `<div class="contrib-name" title="${c.name}">${c.name}</div>` +
+      `<div class="bar"><i style="width:${(Math.abs(c.gain) / max * 100).toFixed(1)}%;background:${c.gain >= 0 ? 'linear-gradient(90deg,#e0673f,#c2402b)' : 'linear-gradient(90deg,#5cb98a,#2e8b57)'}"></i></div>` +
+      `<div class="contrib-val ${moneyClass(c.gain)}">${fmtMoney(c.gain)}</div>` +
+      `<div class="contrib-sub">${sum ? Math.round(c.gain / sum * 100) + '%' : '—'} · 活跃 ${c.active_days} 天</div>`;
+    box.appendChild(row);
+  });
+}
+
+/* 各项目统计（按自然月） */
+const statUI = { month: '' };  // '' = 当月（动态）；'all' = 全部历史；'YYYY-MM' = 指定自然月
+try {
+  const sm = localStorage.getItem('dailyStatMonth');
+  if (sm) statUI.month = sm;
+} catch (e) { /* localStorage 不可用时使用默认值 */ }
+
+function currentMonthOf(h) {
+  return (h.months && h.months.length) ? h.months[h.months.length - 1] : '';
+}
+
+function statEntries() {
+  const h = histData;
+  if (!h || !h.stats) return [];
+  const m = statUI.month === '' ? currentMonthOf(h) : statUI.month;
+  if (m === 'all' || !m) return h.stats;
+  return h.monthly[m] || [];
+}
+
+function miniTag(text, cls) {
+  const t = document.createElement('span');
+  t.className = cls;
+  t.textContent = text;
+  return t;
+}
+
+function renderStatMonthPicker(h) {
+  const sel = $('#statMonth');
+  const months = (h.months || []).slice().reverse();  // 新 → 旧
+  const cur = currentMonthOf(h);
+  const prev = statUI.month;
+  sel.innerHTML = '';
+  if (cur) {
+    const o = document.createElement('option');
+    o.value = '';
+    o.textContent = cur + '（本月）';
+    sel.appendChild(o);
+  }
+  months.forEach(m => {
+    if (m === cur) return;
+    const o = document.createElement('option');
+    o.value = m;
+    o.textContent = m;
+    sel.appendChild(o);
+  });
+  const oa = document.createElement('option');
+  oa.value = 'all';
+  oa.textContent = '全部历史';
+  sel.appendChild(oa);
+  const valid = new Set(Array.from(sel.options).map(o => o.value));
+  statUI.month = valid.has(prev) ? prev : '';
+  sel.value = statUI.month;
+}
+
+function deltaTag(label, val, goodWhenUp, fmt) {
+  if (val === undefined || val === null || !isFinite(val) || Math.abs(val) < 1e-9) {
+    const d = document.createElement('span');
+    d.className = 'delta down';
+    d.textContent = `${label} ±0`;
+    d.style.color = '#b8b0a0';
+    return d;
+  }
+  const up = val > 0;
+  const d = document.createElement('span');
+  d.className = 'delta ' + ((up === goodWhenUp) ? 'up' : 'down');
+  d.textContent = `${label} ${up ? '▲' : '▼'}${fmt(val)}`;
+  return d;
+}
+
+function renderStats() {
+  const rl = $('#rateList');
+  rl.innerHTML = '';
+  const entries = statEntries();
+  if (!entries.length) { rl.innerHTML = '<div class="empty">暂无数据</div>'; return; }
+  entries.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'rate-row' + (s.archived ? ' is-archived' : '');
+    const nm = document.createElement('div');
+    nm.className = 'rate-name';
+    nm.title = s.path + (s.archived ? '（已归档，仅作历史统计）' : '');
+    nm.appendChild(document.createTextNode(s.path));
+    if (s.archived) nm.appendChild(miniTag('已归档', 'stat-tag archived'));
+    else if (s.type === 'multi') nm.appendChild(miniTag('多次·目标' + s.target + '次', 'stat-tag multi'));
+    else if (s.type === 'number') nm.appendChild(miniTag('数值项', 'stat-tag number'));
+    const detail = document.createElement('span');
+    detail.style.cssText = 'color:#8a8577;font-size:12px;margin-left:8px';
+    if (s.type === 'number') {
+      detail.textContent = `累计 ${fmtNum(s.total)} · 日均 ${fmtNum(s.avg)} · ${s.days} 天有记录`;
+    } else if (s.type === 'multi') {
+      detail.textContent = `达标 ${s.done_days}/${s.total_days} 天 · 共 ${s.times} 次 · 日均 ${fmtNum(s.avg_times)} 次`;
+    } else {
+      detail.textContent = `完成 ${s.done_days}/${s.total_days} 天`;
+    }
+    nm.appendChild(detail);
+    // 环比（仅月度视图有 prev_* 字段）
+    if (s.prev_rate !== undefined) {
+      const dd = s.rate - s.prev_rate;
+      nm.appendChild(deltaTag('完成率', Math.round(dd * 1000) / 10, true, v => Math.abs(v) + '%'));
+      nm.appendChild(deltaTag('收益', s.gain - s.prev_gain, true, v => fmtMoney(Math.abs(v))));
+    }
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    const fill = document.createElement('i');
+    const pct = s.total_days ? (s.type === 'number' ? s.days / s.total_days : s.rate) : 0;
+    fill.style.width = (pct * 100).toFixed(1) + '%';
+    fill.style.background = s.type === 'multi'
+      ? 'linear-gradient(90deg,#9a7bc8,#6b4a8a)'
+      : 'linear-gradient(90deg,#e0673f,var(--red))';
+    bar.appendChild(fill);
+    const val = document.createElement('div');
+    val.className = 'rate-val';
+    val.textContent = Math.round(pct * 100) + '%';
+    row.append(nm, bar, val);
+    rl.appendChild(row);
+  });
+}
+
+function renderReport(h) {
+  const rep = h.report;
+  if (!rep) return;
+  renderOneReport($('#weekReport'), rep.week, {
+    title: '本周周报',
+    delta: rep.week.avg_gain - rep.week_prev_avg,
+    deltaLabel: '较上周日均',
+    streak: rep.streak,
+    showDays: true,
+  });
+  renderOneReport($('#monthReport'), rep.month, {
+    title: '本月月报',
+    delta: rep.month.avg_gain - rep.month_prev_avg,
+    deltaLabel: '较上月日均',
+    balance: rep.month_balance,
+    streak: rep.streak,
+    showDays: false,
+  });
+}
+
+function renderOneReport(el, r, opt) {
+  if (!el) return;
+  el.innerHTML = '';
+  const md = (s) => s.slice(5).replace('-', '/');
+  const head = document.createElement('div');
+  head.className = 'rp-head';
+  const t = document.createElement('span');
+  t.className = 'rp-title';
+  t.textContent = opt.title;
+  const rg = document.createElement('span');
+  rg.className = 'rp-range';
+  rg.textContent = `${md(r.start)} - ${md(r.end)} · 已过 ${r.elapsed} 天`;
+  head.append(t, rg);
+  el.appendChild(head);
+
+  const big = document.createElement('div');
+  big.className = 'rp-big';
+  const num = document.createElement('span');
+  num.className = 'rp-num ' + moneyClass(r.gain);
+  num.textContent = moneyWithArrow(r.gain);
+  big.appendChild(num);
+  big.appendChild(deltaTag(opt.deltaLabel, opt.delta, true, v => fmtMoney(Math.abs(v))));
+  el.appendChild(big);
+  const sub = document.createElement('div');
+  sub.className = 'rp-sub';
+  sub.textContent = `日均收益 ${fmtMoney(r.avg_gain)}`;
+  el.appendChild(sub);
+
+  const rate = r.total ? r.done / r.total : 0;
+  const bar = document.createElement('div');
+  bar.className = 'rp-bar';
+  const fill = document.createElement('i');
+  fill.style.width = (rate * 100).toFixed(1) + '%';
+  bar.appendChild(fill);
+  el.appendChild(bar);
+  const cap = document.createElement('div');
+  cap.className = 'rp-sub';
+  cap.textContent = `完成 ${r.done}/${r.total} 次（${Math.round(rate * 100)}%）`;
+  el.appendChild(cap);
+
+  if (opt.showDays) {
+    const wrap = document.createElement('div');
+    wrap.className = 'rp-days';
+    const todayIso = h_todayCache();
+    r.days.forEach(d => {
+      const cell = document.createElement('div');
+      cell.className = 'rp-day' + (d.future ? ' future' : '') +
+        (d.date === todayIso ? ' today' : '');
+      const barBox = document.createElement('div');
+      barBox.className = 'bar';
+      const i = document.createElement('i');
+      if (!d.future) {
+        i.className = 'on';
+        i.style.height = (d.total ? Math.max(d.done / d.total * 100, 3) : 3).toFixed(1) + '%';
+      }
+      barBox.appendChild(i);
+      const lb = document.createElement('div');
+      lb.className = 'lb';
+      lb.textContent = d.date.slice(8) + '日';
+      cell.append(barBox, lb);
+      cell.title = `${d.date} · 完成 ${d.done}/${d.total} · 收益 ${fmtMoney(d.gain)}`;
+      wrap.appendChild(cell);
+    });
+    el.appendChild(wrap);
+  }
+
+  const rows = document.createElement('dl');
+  rows.className = 'rp-rows';
+  const addRow = (k, v) => {
+    const dt = document.createElement('dt');
+    dt.textContent = k;
+    const dd = document.createElement('dd');
+    dd.textContent = v;
+    rows.append(dt, dd);
+  };
+  if (r.best && r.best.count > 0) addRow('最佳项目', `${r.best.name} · ${r.best.count} 次`);
+  if (opt.streak) addRow('连续打卡', opt.streak + ' 天');
+  if (opt.balance) {
+    const b = opt.balance;
+    addRow('本月收益', fmtMoney(b.month_gain));
+    const box = document.createElement('div');
+    box.className = 'rp-balance';
+    const mk = (cls, k, v) => {
+      const row = document.createElement('div');
+      row.className = 'rb-row ' + cls;
+      const s = document.createElement('span');
+      s.textContent = k;
+      const bb = document.createElement('b');
+      bb.textContent = v;
+      row.append(s, bb);
+      return row;
+    };
+    box.append(
+      mk('', `上月末余额（${md(b.prev_month_end)}）`, fmtMoney(b.prev_balance)),
+      mk('cur', '当前余额', fmtMoney(b.current)),
+      mk('fc', `预计月末余额（剩 ${b.remaining_days} 天）`, fmtMoney(b.forecast)),
+    );
+    rows.appendChild(box);
+  }
+  el.appendChild(rows);
+}
+
+function h_todayCache() {
+  return (state && state.today) || new Date().toISOString().slice(0, 10);
+}
+
+/* 月度归档表：每个自然月一行，点击月份名跳到当月明细 */
+function jumpToMonth(m) {
+  detailUI.month = m;
+  detailUI.range = 'all';
+  detailUI.expanded = true;
+  detailUI.limit = DETAIL_BATCH;
+  try { localStorage.setItem('dailyDetailExpanded', '1'); } catch (e) {}
+  renderDetail(histData);
+  const el = $('#detailControls');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  toast('已跳转到 ' + m + ' 明细');
+}
+
+function renderArchiveTable(h) {
+  const t = $('#archiveTable');
+  t.innerHTML = '';
+  const metas = (h.month_meta || []).slice().reverse();  // 新 → 旧
+  const cols = h.columns || [];
+  if (!metas.length) {
+    t.innerHTML = `<tr><td colspan="${cols.length + 3}"><div class="empty">暂无数据</div></td></tr>`;
+    return;
+  }
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  const th0 = document.createElement('th');
+  th0.className = 'month-cell';
+  th0.textContent = '月份';
+  trh.appendChild(th0);
+  cols.forEach(c => {
+    const th = document.createElement('th');
+    th.textContent = c.name + (c.archived ? ' *' : '');
+    trh.appendChild(th);
+  });
+  const thg = document.createElement('th');
+  thg.textContent = '当月收益';
+  trh.appendChild(thg);
+  const tht = document.createElement('th');
+  tht.textContent = '月末累计';
+  trh.appendChild(tht);
+  thead.appendChild(trh);
+  t.appendChild(thead);
+  const cur = currentMonthOf(h);
+  const tbody = document.createElement('tbody');
+  metas.forEach(m => {
+    const tr = document.createElement('tr');
+    if (m.month === cur) tr.className = 'cur-month';
+    const mc = document.createElement('td');
+    mc.className = 'month-cell';
+    mc.textContent = `${m.month}（${m.record_days}/${m.days} 天）`;
+    mc.title = '点击查看该月明细';
+    mc.addEventListener('click', () => jumpToMonth(m.month));
+    tr.appendChild(mc);
+    const entries = h.monthly[m.month] || [];
+    cols.forEach((c, i) => {
+      const s = entries[i];
+      const td = document.createElement('td');
+      td.className = 'arc-cell';
+      if (!s) {
+        td.textContent = '—';
+      } else if (s.type === 'number') {
+        td.textContent = fmtNum(s.total);
+        if (s.total > 0) td.classList.add('hot');
+      } else {
+        td.textContent = `${s.done_days}/${s.total_days}`;
+        if (s.done_days > 0) td.classList.add('hot');
+      }
+      tr.appendChild(td);
+    });
+    const g = document.createElement('td');
+    g.className = 'money-cell ' + (m.gain >= 0 ? 'pos' : 'neg');
+    g.textContent = fmtMoney(m.gain);
+    tr.appendChild(g);
+    const tt = document.createElement('td');
+    tt.className = 'money-cell ' + (m.total >= 0 ? 'pos' : 'neg');
+    tt.textContent = fmtMoney(m.total);
+    tr.appendChild(tt);
+    tbody.appendChild(tr);
+  });
+  t.appendChild(tbody);
+}
+
+/* ---------- 明细表：折叠 / 范围筛选 / 分批加载 ---------- */
+const DETAIL_BATCH = 60;
+const detailUI = { expanded: false, range: '90', month: '', limit: DETAIL_BATCH, showArchived: false };
+try {
+  detailUI.expanded = localStorage.getItem('dailyDetailExpanded') === '1';
+  const savedRange = localStorage.getItem('dailyDetailRange');
+  if (['30', '90', 'year', 'all'].includes(savedRange)) detailUI.range = savedRange;
+  detailUI.showArchived = localStorage.getItem('dailyDetailShowArchived') === '1';
+} catch (e) { /* localStorage 不可用时使用默认值 */ }
+
+function detailFiltered(rows) {
+  if (detailUI.month) return rows.filter(r => r.date.slice(0, 7) === detailUI.month);
+  if (detailUI.range === 'all') return rows;
+  if (detailUI.range === 'year') {
+    const today = state ? state.today : new Date().toISOString().slice(0, 10);
+    const y = today.slice(0, 4);
+    return rows.filter(r => r.date.slice(0, 4) === y);
+  }
+  return rows.slice(0, Number(detailUI.range));
+}
+
+function renderDetail(h) {
+  const rows = h.rows || [];
+  const total = rows.length;
+  const icon = $('#detailIcon');
+  const summary = $('#detailSummary');
+  const meta = $('#detailMeta');
+  const controls = $('#detailControls');
+  const wrap = $('#detailTableWrap');
+  const foot = $('#detailFoot');
+
+  if (!total) {
+    icon.textContent = '·';
+    summary.textContent = '暂无打卡记录';
+    meta.textContent = '';
+  } else {
+    icon.textContent = detailUI.expanded ? '▾' : '▸';
+    summary.textContent = detailUI.expanded ? '收起明细' : `展开明细（共 ${total} 天）`;
+    meta.textContent = `${rows[total - 1].date} ~ ${rows[0].date}`;
+  }
+  controls.style.display = detailUI.expanded && total ? '' : 'none';
+  wrap.style.display = controls.style.display;
+  foot.style.display = controls.style.display;
+  if (!detailUI.expanded || !total) return;
+
+  const months = [];
+  rows.forEach(r => {
+    const m = r.date.slice(0, 7);
+    if (!months.includes(m)) months.push(m);
+  });
+  if (detailUI.month && !months.includes(detailUI.month)) detailUI.month = '';
+  const sel = $('#monthJump');
+  sel.innerHTML = '';
+  sel.add(new Option('跳转到月份…', ''));
+  months.forEach(m => {
+    const y = m.slice(0, 4);
+    const mm = Number(m.slice(5, 7));
+    sel.add(new Option(`${y} 年 ${mm} 月`, m));
+  });
+  sel.value = detailUI.month;
+
+  document.querySelectorAll('#rangeGroup .range-btn').forEach(b => {
+    b.classList.toggle('active', !detailUI.month && b.dataset.range === detailUI.range);
+  });
+
+  const filtered = detailFiltered(rows);
+  if (detailUI.limit < DETAIL_BATCH) detailUI.limit = DETAIL_BATCH;
+  const shown = Math.min(detailUI.limit, filtered.length);
+  renderHistoryTable(h, filtered.slice(0, shown));
+
+  const archBtn = $('#archColBtn');
+  const hasArch = h.columns.some(c => c.archived);
+  archBtn.style.display = hasArch ? '' : 'none';
+  archBtn.textContent = detailUI.showArchived ? '归档列：展开' : '归档列：已折叠';
+  archBtn.title = detailUI.showArchived
+    ? '点击折叠归档列为汇总徽章（历史数据不丢失，只是不再逐日占列）'
+    : '归档项目的历史数据已封存为汇总；点击可展开为逐日明细';
+
+  const more = filtered.length - shown;
+  const loadBtn = $('#loadMoreBtn');
+  loadBtn.style.display = more > 0 ? '' : 'none';
+  if (more > 0) loadBtn.textContent = `加载更早（还剩 ${more} 天）`;
+  const monthText = detailUI.month
+    ? `（${detailUI.month.slice(0, 4)} 年 ${Number(detailUI.month.slice(5, 7))} 月）` : '';
+  $('#detailCount').textContent = `显示 ${shown} / ${filtered.length} 天${monthText}`;
+}
+
+/* 明细表 + 补录入口（rows 为当前筛选后要渲染的行，按日期降序）。
+   归档列的两种形态：折叠（默认）= 表尾一行汇总徽章；展开 = 逐日列（灰色样式）。 */
+function renderHistoryTable(h, rows) {
+  const table = $('#historyTable');
+  table.innerHTML = '';
+  const allCols = h.columns.map((c, i) => ({ ...c, _idx: i }));
+  const columns = detailUI.showArchived ? allCols : allCols.filter(c => !c.archived);
+  const archCols = allCols.filter(c => c.archived);
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  const thDate = document.createElement('th');
+  thDate.textContent = '日期';
+  trh.appendChild(thDate);
+  columns.forEach(c => {
+    const th = document.createElement('th');
+    th.textContent = c.name;
+    if (c.archived) {
+      th.title = '已归档项目：历史数据已封存，仅供统计查看';
+      th.style.color = '#9a9284';
+      const f = document.createElement('span');
+      f.style.cssText = 'display:block;font-size:11px;color:#9a9284;font-weight:400';
+      f.textContent = '已归档';
+      th.appendChild(f);
+    }
+    if (c.type === 'check' && c.benefit) {
+      const b = document.createElement('span');
+      b.style.cssText = 'display:block;font-size:11px;color:#b3541e;font-weight:400';
+      b.textContent = fmtMoney(c.benefit) + ' / 次';
+      th.appendChild(b);
+    }
+    if (c.type === 'multi') {
+      const b = document.createElement('span');
+      b.style.cssText = 'display:block;font-size:11px;color:#6b4a8a;font-weight:400';
+      b.textContent = `目标 ${c.target} 次` + (c.benefit ? ` · 达标 ${fmtMoney(c.benefit)}` : '');
+      th.appendChild(b);
+    }
+    trh.appendChild(th);
+  });
+  const thGain = document.createElement('th');
+  thGain.textContent = '当日收益';
+  trh.appendChild(thGain);
+  const thCum = document.createElement('th');
+  thCum.textContent = '累计收益';
+  trh.appendChild(thCum);
+  const thOp = document.createElement('th');
+  thOp.textContent = '补录';
+  trh.appendChild(thOp);
+  thead.appendChild(trh);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  if (!rows.length) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = columns.length + 4;
+    td.innerHTML = '<div class="empty">没有符合条件的记录</div>';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  } else {
+    rows.forEach(row => {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.className = 'date-cell';
+      const d = new Date(row.date + 'T00:00:00');
+      td.textContent = row.date;
+      const wd = document.createElement('span');
+      wd.className = 'wd';
+      wd.textContent = WEEK[d.getDay()];
+      td.appendChild(wd);
+      tr.appendChild(td);
+      columns.forEach(col => {
+        const v = row.values[col._idx];
+        const c = document.createElement('td');
+        if (col.type === 'multi') {
+          const ok = v >= (col.target || 1);
+          c.innerHTML = `<span class="mb ${ok ? 'ok' : 'no'}">${v}/${col.target}</span>`;
+        } else if (col.type === 'number') {
+          c.textContent = fmtNum(v);
+        } else {
+          c.textContent = v === 1 ? '1' : '0';
+        }
+        const on = col.type === 'number' ? v > 0
+          : col.type === 'multi' ? v >= (col.target || 1) : v === 1;
+        c.className = on ? 'done-cell' : 'off-cell';
+        if (col.archived) c.style.opacity = '.55';
+        tr.appendChild(c);
+      });
+      const g = document.createElement('td');
+      g.className = 'money-cell ' + moneyClass(row.gain);
+      g.textContent = fmtMoney(row.gain);
+      tr.appendChild(g);
+      const cum = document.createElement('td');
+      cum.className = 'money-cell ' + moneyClass(row.total);
+      cum.textContent = fmtMoney(row.total);
+      tr.appendChild(cum);
+      const op = document.createElement('td');
+      if (row.date < state.today) {
+        const btn = document.createElement('button');
+        btn.className = 'mini-btn';
+        btn.textContent = '补录';
+        btn.addEventListener('click', () => openDayModal(row));
+        op.appendChild(btn);
+      }
+      tr.appendChild(op);
+      tbody.appendChild(tr);
+    });
+    // 归档汇总行：折叠模式下把全部归档列压成一行徽章，表格宽度从此恒定
+    if (!detailUI.showArchived && archCols.length) {
+      const tr = document.createElement('tr');
+      tr.className = 'arch-summary-row';
+      const label = document.createElement('td');
+      label.className = 'date-cell';
+      label.innerHTML = '<span class="wd" style="color:#9a9284">已归档汇总</span>';
+      tr.appendChild(label);
+      columns.forEach(col => {
+        const td = document.createElement('td');
+        if (col.archived) td.appendChild(archivedChip(col, rows));
+        tr.appendChild(td);
+      });
+      const span = document.createElement('td');
+      span.colSpan = 3;
+      span.style.fontSize = '11px';
+      span.style.color = '#9a9284';
+      span.textContent = `当前显示 ${rows.length} 天内的归档项目合计`;
+      tr.appendChild(span);
+      tbody.appendChild(tr);
+    }
+  }
+  table.appendChild(tbody);
+}
+
+/* 归档列的汇总徽章：勾选/多次项 = 完成天数 + 次数 + 收益；数值项 = 合计 */
+function archivedChip(col, rows) {
+  const vals = rows.map(r => Number(r.values[col._idx]) || 0);
+  const chip = document.createElement('span');
+  chip.className = 'arch-chip';
+  if (col.type === 'number') {
+    chip.textContent = `合计 ${fmtMoney(Math.round(vals.reduce((a, b) => a + b, 0) * 100) / 100)}`;
+  } else {
+    const t = col.target || 1;
+    const done = vals.filter(v => col.type === 'multi' ? v >= t : v === 1).length;
+    const times = col.type === 'multi' ? vals.reduce((a, b) => a + b, 0) : null;
+    chip.textContent = `✓${done}/${rows.length}`
+      + (times !== null ? ` · ${times} 次` : '')
+      + ` · ${fmtMoney(Math.round(done * (col.benefit || 0) * 100) / 100)}`;
+  }
+  chip.title = `${col.name}（已归档）：当前显示范围内的汇总`;
+  return chip;
+}
+
+/* ---------- 补录弹窗 ---------- */
+function openDayModal(row) {
+  dayCtx = { date: row.date, values: row.values.slice() };
+  const d = new Date(row.date + 'T00:00:00');
+  $('#dayModalTitle').textContent = `补录 ${d.getMonth() + 1} 月 ${d.getDate()} 日 ${WEEK[d.getDay()]}`;
+  const body = $('#dayModalBody');
+  body.innerHTML = '';
+  histData.columns.forEach((c, i) => {
+    const r = document.createElement('div');
+    r.className = 'day-row';
+    const nm = document.createElement('div');
+    nm.className = 'day-name';
+    nm.textContent = c.path;
+    const badge = document.createElement('span');
+    badge.className = 'm-badge ' + c.type;
+    badge.textContent = TYPE_LABEL[c.type];
+    nm.appendChild(badge);
+    if (c.archived) {
+      const ab = document.createElement('span');
+      ab.className = 'm-badge archived';
+      ab.textContent = '已归档';
+      nm.appendChild(ab);
+    }
+    r.appendChild(nm);
+    let ctrl;
+    if (c.archived) {
+      // 已归档：历史封存，只读展示，不参与补录提交
+      ctrl = document.createElement('span');
+      ctrl.className = 'm-badge archived';
+      ctrl.textContent = `历史值 ${row.values[i] === 0 ? '0' : row.values[i]} · 封存`;
+      ctrl.style.opacity = '.75';
+    } else if (c.type === 'check') {
+      ctrl = document.createElement('button');
+      ctrl.className = 'day-toggle' + (row.values[i] === 1 ? ' on' : '');
+      ctrl.textContent = row.values[i] === 1 ? '✓ 已完成' : '未完成';
+      ctrl.addEventListener('click', () => {
+        ctrl.classList.toggle('on');
+        ctrl.textContent = ctrl.classList.contains('on') ? '✓ 已完成' : '未完成';
+      });
+    } else if (c.type === 'multi') {
+      ctrl = buildMultiControl(c.target || 1, row.values[i] || 0);
+    } else {
+      ctrl = document.createElement('input');
+      ctrl.type = 'number';
+      ctrl.step = 'any';
+      ctrl.className = 'day-input';
+      ctrl.value = row.values[i] === 0 ? '' : row.values[i];
+      ctrl.placeholder = '0';
+    }
+    if (!c.archived) ctrl.dataset.i = i;
+    r.appendChild(ctrl);
+    body.appendChild(r);
+  });
+  $('#dayModal').classList.add('show');
+}
+
+/* 补录弹窗中的多次项控件：目标 ≤10 用圆点，否则用 减/加 计数器；当前值存在 dataset.v */
+function buildMultiControl(target, cur) {
+  const wrap = document.createElement('div');
+  wrap.className = 'day-multi';
+  wrap.dataset.v = String(cur);
+  const paint = (v) => {
+    wrap.dataset.v = String(v);
+    wrap.querySelectorAll('.m-dot').forEach((dot, idx) => dot.classList.toggle('on', idx < v));
+    const t = wrap.querySelector('.mv-text');
+    if (t) t.textContent = `${v}/${target}`;
+  };
+  if (target <= 10) {
+    for (let k = 1; k <= target; k++) {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'm-dot' + (k <= cur ? ' on' : '');
+      dot.title = k <= cur ? `已记 ${k} 次（点击减一次）` : `记 ${k} 次`;
+      dot.addEventListener('click', () => paint(Number(wrap.dataset.v) === k ? k - 1 : k));
+      wrap.appendChild(dot);
+    }
+  } else {
+    const minus = document.createElement('button');
+    minus.type = 'button';
+    minus.className = 'm-step';
+    minus.textContent = '−';
+    minus.addEventListener('click', () => paint(Math.max(0, Number(wrap.dataset.v) - 1)));
+    wrap.appendChild(minus);
+  }
+  const txt = document.createElement('span');
+  txt.className = 'mv-text';
+  txt.textContent = `${cur}/${target}`;
+  wrap.appendChild(txt);
+  if (target > 10) {
+    const plus = document.createElement('button');
+    plus.type = 'button';
+    plus.className = 'm-step';
+    plus.textContent = '+';
+    plus.addEventListener('click', () => paint(Math.min(target, Number(wrap.dataset.v) + 1)));
+    wrap.appendChild(plus);
+  }
+  return wrap;
+}
+
+function closeDayModal() {
+  $('#dayModal').classList.remove('show');
+  dayCtx = null;
+}
+
+async function saveDay() {
+  if (!dayCtx) return;
+  const changes = [];
+  $('#dayModalBody').querySelectorAll('[data-i]').forEach(ctrl => {
+    const i = Number(ctrl.dataset.i);
+    const c = histData.columns[i];
+    const old = Number(dayCtx.values[i]);
+    let nv;
+    if (c.type === 'check') {
+      nv = ctrl.classList.contains('on') ? 1 : 0;
+    } else if (c.type === 'multi') {
+      nv = Number(ctrl.dataset.v || 0);
+    } else {
+      const raw = ctrl.value.trim();
+      nv = raw === '' ? 0 : Number(raw);
+      if (!isFinite(nv)) nv = old;
+    }
+    if (Number(nv) !== old) changes.push({ id: c.id, value: nv });
+  });
+  if (!changes.length) { toast('没有修改'); closeDayModal(); return; }
+  try {
+    await api('/api/day', 'POST', { date: dayCtx.date, changes });
+    toast(`已补录 ${dayCtx.date}：${changes.length} 项修改，收益链已重算`);
+    closeDayModal();
+    await refreshHistory();
+    await refreshToday();
+  } catch (e) { toast(e.message); }
+}
+
+/* ---------- 目标 ---------- */
+async function saveGoal() {
+  const raw = $('#goalInput').value.trim();
+  try {
+    settings = (await api('/api/settings', 'POST', {
+      goal: raw === '' ? 0 : Number(raw),
+      note: $('#goalNote').value.trim()
+    })).settings;
+    toast('目标已保存');
+    await refreshHistory();
+  } catch (e) { toast(e.message); }
+}
+
+/* ================= 结构管理 ================= */
+function groupOptions(nodes, depth, out) {
+  nodes.forEach(n => {
+    if (n.type === 'group') {
+      out.push({ id: n.id, label: '　'.repeat(depth) + n.name });
+      groupOptions(n.children || [], depth + 1, out);
+    }
+  });
+  return out;
+}
+
+function buildParentOptions(preferred) {
+  const sel = $('#mParent');
+  sel.innerHTML = '';
+  sel.add(new Option('（顶级）', ''));
+  groupOptions(state.tree, 0, []).forEach(o => sel.add(new Option(o.label, String(o.id))));
+  sel.value = preferred == null ? '' : String(preferred);
+}
+
+function findNode(nodes, id) {
+  for (const n of nodes) {
+    if (n.id === id) return n;
+    if (n.children) {
+      const r = findNode(n.children, id);
+      if (r) return r;
+    }
+  }
+  return null;
+}
+
+function applyBenefitEditable() {
+  const type = $('#mType').value;
+  const hasBenefit = type === 'check' || type === 'multi';
+  $('#mBenefit').disabled = !hasBenefit;
+  $('#mBenefit').title = hasBenefit
+    ? '收益金额：勾选项完成一次获得；多次项练满目标次数才结算一次，可为负'
+    : (type === 'number' ? '数值项的收益 = 当日填入的数值，无需设置' : '分类无收益');
+  $('#mTarget').disabled = type !== 'multi';
+  $('#mTarget').title = type === 'multi'
+    ? '当日完成多少次才算达标（1~99）'
+    : '仅多次打卡项需要设置目标次数';
+}
+
+function exitEdit() {
+  editingId = null;
+  $('#formTitle').textContent = '添加项目';
+  $('#mName').value = '';
+  $('#mBenefit').value = '';
+  $('#mTarget').value = '';
+  $('#mType').value = 'check';
+  $('#mType').disabled = false;
+  $('#mCancel').style.display = 'none';
+  $('#mSubmit').textContent = '添加';
+  applyBenefitEditable();
+  buildParentOptions(null);
+}
+
+function editItem(id) {
+  const it = findNode(state.tree, id);
+  if (!it) return;
+  editingId = id;
+  $('#formTitle').textContent = '编辑项目';
+  $('#mName').value = it.name;
+  const canConvert = it.type === 'check' || it.type === 'multi';
+  $('#mType').value = it.type;
+  $('#mType').disabled = !canConvert;   // 勾选项 / 多次项可互转，其余类型锁定
+  $('#mType').title = canConvert
+    ? '勾选项与多次打卡项可以互相转换（历史收益将按新规则重算）'
+    : '数值项与分类的类型不可转换';
+  $('#mBenefit').value = (it.type === 'check' || it.type === 'multi') ? it.benefit : '';
+  $('#mTarget').value = it.type === 'multi' ? it.target : '';
+  $('#mCancel').style.display = '';
+  $('#mSubmit').textContent = '保存修改';
+  buildParentOptions(it.parent);
+  applyBenefitEditable();
+  $('#mName').focus();
+}
+
+async function submitForm() {
+  const name = $('#mName').value.trim();
+  if (!name) { toast('请输入名称'); $('#mName').focus(); return; }
+  const parentId = $('#mParent').value || null;
+  const benefitRaw = $('#mBenefit').value.trim();
+  const targetRaw = $('#mTarget').value.trim();
+  const type = $('#mType').value;
+  try {
+    if (editingId) {
+      const cur = findNode(state.tree, editingId);
+      const target = targetRaw === '' ? 1 : Number(targetRaw);
+      if (cur && type !== cur.type) {
+        const msg = type === 'check'
+          ? `将「${cur.name}」从多次项转为勾选项？\n\n· 历史上练过（次数 > 0）的日期都会记为已完成\n· 之后每天勾一次即算完成并结算收益\n· 历史收益链将按新规则重算（累计余额可能变化）`
+          : `将「${cur.name}」从勾选项转为多次项？\n\n· 当前目标次数：${target} 次/天\n· 历史 0/1 记录保留（练满目标次数才结算收益）\n· 历史收益链将按新规则重算（累计余额可能变化）`;
+        if (!confirm(msg)) return;
+      }
+      if (type === 'multi' && !(target >= 1)) {
+        toast('多次项请填写目标次数（至少 1）');
+        $('#mTarget').focus();
+        return;
+      }
+      const r = await api('/api/item/update', 'POST', {
+        id: editingId, name, type, parent_id: parentId,
+        benefit: benefitRaw === '' ? 0 : Number(benefitRaw),
+        target: target
+      });
+      toast(r.converted ? `已转换为${TYPE_LABEL[type]}，历史收益已按新规则重算` : '已保存修改');
+      exitEdit();
+    } else {
+      await api('/api/item/add', 'POST', {
+        name, type: $('#mType').value, parent_id: parentId,
+        benefit: benefitRaw === '' ? 0 : Number(benefitRaw),
+        target: targetRaw === '' ? 1 : Number(targetRaw)
+      });
+      $('#mName').value = '';
+      $('#mBenefit').value = '';
+      $('#mTarget').value = '';
+      toast('已添加：' + name);
+    }
+    await refreshManage();
+  } catch (e) { toast(e.message); }
+}
+
+async function removeItem(n) {
+  const msg = n.type === 'group'
+    ? `确定归档分类「${n.name}」及其下所有子项？\n\n归档后它们不再出现在今日打卡，但历史记录、统计与收益全部保留，可随时在归档箱恢复。`
+    : `确定归档「${n.name}」？\n\n归档后它不再出现在今日打卡，但历史记录、统计与收益全部保留，可随时在归档箱恢复。`;
+  if (!confirm(msg)) return;
+  try {
+    await api('/api/item/remove', 'POST', { id: n.id });
+    toast('已归档：' + n.name);
+    await refreshManage();
+  } catch (e) { toast(e.message); }
+}
+
+async function restoreItem(n) {
+  if (!confirm(`确定恢复「${n.name}」？\n其父级分类（若仍在归档中）会一并恢复。`)) return;
+  try {
+    await api('/api/item/restore', 'POST', { id: n.id });
+    toast('已恢复：' + n.name);
+    await refreshManage();
+  } catch (e) { toast(e.message); }
+}
+
+async function purgeItem(n) {
+  const msg = n.type === 'group'
+    ? `【永久删除 · 不可恢复】\n\n将彻底移除分类「${n.name}」及其下所有子项：\n· 打卡记录表中对应列及全部历史数值被移除\n· 历史收益链将按剩余项目重算（累计收益可能变化）\n\n强烈建议先到下方「数据备份」点一次立即备份。确定继续？`
+    : `【永久删除 · 不可恢复】\n\n将彻底移除「${n.name}」：\n· 打卡记录表中对应列及全部历史数值被移除\n· 历史收益链将按剩余项目重算（累计收益可能变化）\n\n强烈建议先到下方「数据备份」点一次立即备份。确定继续？`;
+  if (!confirm(msg)) return;
+  try {
+    await api('/api/item/purge', 'POST', { id: n.id });
+    toast('已永久删除：' + n.name);
+    await refreshManage();
+  } catch (e) { toast(e.message); }
+}
+
+function buildManageNode(n, depth) {
+  const row = document.createElement('div');
+  row.className = 'm-row';
+  row.style.paddingLeft = (6 + depth * 20) + 'px';
+  const arrow = document.createElement('span');
+  arrow.className = 'm-arrow';
+  arrow.textContent = n.type === 'group' ? '▾' : '·';
+  const name = document.createElement('span');
+  name.className = 'm-name';
+  name.textContent = n.name;
+  const badge = document.createElement('span');
+  badge.className = 'm-badge ' + n.type;
+  badge.textContent = TYPE_LABEL[n.type];
+  row.append(arrow, name, badge);
+  if (n.type === 'check') {
+    const b = document.createElement('span');
+    b.className = 'm-benefit';
+    b.textContent = `收益 ${fmtMoney(n.benefit)} / 次`;
+    row.appendChild(b);
+  } else if (n.type === 'multi') {
+    const b = document.createElement('span');
+    b.className = 'm-benefit';
+    b.textContent = `目标 ${n.target} 次 · 达标收益 ${fmtMoney(n.benefit)}`;
+    row.appendChild(b);
+  } else if (n.type === 'number') {
+    const b = document.createElement('span');
+    b.className = 'm-benefit';
+    b.textContent = '收益 = 填入数值';
+    row.appendChild(b);
+  }
+  const actions = document.createElement('span');
+  actions.className = 'm-actions';
+  const editBtn = document.createElement('button');
+  editBtn.textContent = '编辑';
+  editBtn.addEventListener('click', () => editItem(n.id));
+  const delBtn = document.createElement('button');
+  delBtn.textContent = '归档';
+  delBtn.addEventListener('click', () => removeItem(n));
+  actions.append(editBtn, delBtn);
+  row.appendChild(actions);
+
+  const out = [row];
+  if (n.type === 'group') {
+    (n.children || []).forEach(c => out.push(...buildManageNode(c, depth + 1)));
+    if (!(n.children || []).length) {
+      const e = document.createElement('div');
+      e.className = 'empty';
+      e.style.padding = '4px 0';
+      e.textContent = '（空分类）';
+      out.push(e);
+    }
+  }
+  return out;
+}
+
+function renderManageTree(nodes, container) {
+  container.innerHTML = '';
+  const out = [];
+  nodes.forEach(n => out.push(...buildManageNode(n, 0)));
+  out.forEach(el => container.appendChild(el));
+  if (!out.length) container.innerHTML = '<div class="empty">暂无项目，请在上方添加</div>';
+}
+
+/* 归档箱：已归档（软删除）的项目，历史数据完整保留 */
+function buildArchiveNode(n, depth) {
+  const row = document.createElement('div');
+  row.className = 'm-row is-archived';
+  row.style.paddingLeft = (6 + depth * 20) + 'px';
+  const name = document.createElement('span');
+  name.className = 'm-name';
+  name.textContent = n.name;
+  const badge = document.createElement('span');
+  badge.className = 'm-badge ' + n.type;
+  badge.textContent = TYPE_LABEL[n.type];
+  row.append(name, badge);
+  if (n.type === 'check' || n.type === 'multi') {
+    const b = document.createElement('span');
+    b.className = 'm-benefit';
+    b.textContent = n.type === 'multi'
+      ? `目标 ${n.target} 次 · 达标收益 ${fmtMoney(n.benefit)}`
+      : `收益 ${fmtMoney(n.benefit)} / 次`;
+    row.appendChild(b);
+  }
+  const actions = document.createElement('span');
+  actions.className = 'm-actions';
+  const reBtn = document.createElement('button');
+  reBtn.textContent = '恢复';
+  reBtn.addEventListener('click', () => restoreItem(n));
+  const renBtn = document.createElement('button');
+  renBtn.textContent = '重命名';
+  renBtn.title = '重命名归档项（如改为「肾俞·旧」）以释放原名称，之后即可新建同名项目';
+  renBtn.addEventListener('click', () => startArchiveRename(n, name));
+  const delBtn = document.createElement('button');
+  delBtn.textContent = '永久删除';
+  delBtn.addEventListener('click', () => purgeItem(n));
+  actions.append(reBtn, renBtn, delBtn);
+  row.appendChild(actions);
+  const out = [row];
+  if (n.type === 'group') {
+    (n.children || []).forEach(c => out.push(...buildArchiveNode(c, depth + 1)));
+  }
+  return out;
+}
+
+/* 归档箱内联重命名：回车保存、Esc 取消、失焦保存。
+   典型用途：把旧「肾俞」改为「肾俞·旧」释放名称，再新建同名项目开启新周期。 */
+async function startArchiveRename(n, nameEl) {
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'm-rename-input';
+  input.value = n.name;
+  input.maxLength = 20;
+  nameEl.replaceWith(input);
+  input.focus();
+  input.select();
+  let finished = false;
+  const restore = (text) => {
+    const back = document.createElement('span');
+    back.className = 'm-name';
+    back.textContent = text;
+    input.replaceWith(back);
+  };
+  const finish = async (save) => {
+    if (finished) return;
+    finished = true;
+    const v = input.value.trim();
+    restore(v || n.name);
+    if (!save || !v || v === n.name) return;
+    try {
+      await api('/api/item/rename', 'POST', { id: n.id, name: v });
+      toast('已重命名为：' + v);
+      await refreshManage();
+    } catch (e) { toast(e.message); }
+  };
+  input.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter') { ev.preventDefault(); finish(true); }
+    else if (ev.key === 'Escape') { ev.preventDefault(); finish(false); }
+  });
+  input.addEventListener('blur', () => finish(true));
+}
+
+function renderArchiveTree(nodes, container) {
+  container.innerHTML = '';
+  const out = [];
+  nodes.forEach(n => out.push(...buildArchiveNode(n, 0)));
+  out.forEach(el => container.appendChild(el));
+  if (!out.length) {
+    container.innerHTML = '<div class="form-tip" style="padding:10px 2px">归档箱是空的。删除项目时会自动归档到这里，历史数据不会丢失。</div>';
+  }
+}
+
+async function renderBackups() {
+  try {
+    const { backups } = await api('/api/backups');
+    const box = $('#backupList');
+    box.innerHTML = '';
+    if (!backups.length) {
+      box.innerHTML = '<div class="form-tip" style="padding:10px 14px">暂无备份文件</div>';
+      return;
+    }
+    backups.forEach(b => {
+      const row = document.createElement('div');
+      row.className = 'backup-row';
+      row.innerHTML = `<span class="bn">${b.name}</span><span class="bs">${sizeText(b.size)}</span><span class="bt">${b.mtime}</span>`;
+      box.appendChild(row);
+    });
+  } catch (e) { /* 静默 */ }
+}
+
+async function refreshManage() {
+  await refreshToday();
+  renderManageTree(state.tree, $('#manageTree'));
+  renderArchiveTree(state.archived || [], $('#archiveTree'));
+  $('#archiveCard').style.display = (state.archived && state.archived.length) ? '' : 'none';
+  buildParentOptions(editingId == null ? null : (findNode(state.tree, editingId) || {}).parent);
+  applyBenefitEditable();
+  await renderBackups();
+}
+
+/* ================= 页签与初始化 ================= */
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    $('#tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'history') refreshHistory().catch(e => toast(e.message));
+    if (btn.dataset.tab === 'manage') refreshManage().catch(e => toast(e.message));
+  });
+});
+
+$('#mSubmit').addEventListener('click', submitForm);
+$('#statMonth').addEventListener('change', e => {
+  statUI.month = e.target.value;
+  try { localStorage.setItem('dailyStatMonth', statUI.month); } catch (err) {}
+  renderStats();
+});
+$('#mCancel').addEventListener('click', exitEdit);
+$('#mType').addEventListener('change', applyBenefitEditable);
+$('#mName').addEventListener('keydown', e => { if (e.key === 'Enter') submitForm(); });
+$('#goalSave').addEventListener('click', saveGoal);
+$('#goalClear').addEventListener('click', async () => {
+  $('#goalInput').value = '';
+  $('#goalNote').value = '';
+  await saveGoal();
+});
+$('#backupBtn').addEventListener('click', async () => {
+  try {
+    const r = await api('/api/backup', 'POST', {});
+    toast('备份完成：' + r.name);
+    await renderBackups();
+  } catch (e) { toast(e.message); }
+});
+
+/* 导出备份包（zip）：fetch 二进制 -> blob 触发浏览器下载 */
+$('#exportBtn').addEventListener('click', async () => {
+  const btn = $('#exportBtn');
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = '正在打包…';
+  try {
+    const resp = await fetch('/api/export/zip');
+    if (!resp.ok) {
+      let msg = '导出失败';
+      try { msg = (await resp.json()).error || msg; } catch (e) { /* 非 JSON 响应 */ }
+      toast(msg);
+      return;
+    }
+    const blob = await resp.blob();
+    let fname = '打卡备份.zip';
+    const cd = resp.headers.get('Content-Disposition') || '';
+    let m = cd.match(/filename\*=UTF-8''([^;]+)/i);
+    if (m) fname = decodeURIComponent(m[1]);
+    else {
+      m = cd.match(/filename="?([^";]+)"?/i);
+      if (m) fname = m[1];
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+    toast('备份包 ' + fname + ' 已开始下载——请保存到 U 盘或网盘');
+  } catch (e) {
+    toast('导出失败：' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+});
+$('#dayModalSave').addEventListener('click', saveDay);
+$('#dayModalCancel').addEventListener('click', closeDayModal);
+$('#dayModalClose').addEventListener('click', closeDayModal);
+$('#dayModal').addEventListener('click', e => { if (e.target === $('#dayModal')) closeDayModal(); });
+$('#goalInput').addEventListener('keydown', e => { if (e.key === 'Enter') saveGoal(); });
+
+/* ---------- 明细表交互 ---------- */
+$('#detailToggle').addEventListener('click', () => {
+  detailUI.expanded = !detailUI.expanded;
+  detailUI.limit = DETAIL_BATCH;
+  try { localStorage.setItem('dailyDetailExpanded', detailUI.expanded ? '1' : '0'); } catch (e) {}
+  if (histData) renderDetail(histData);
+});
+$('#rangeGroup').addEventListener('click', e => {
+  const btn = e.target.closest('.range-btn');
+  if (!btn) return;
+  detailUI.range = btn.dataset.range;
+  detailUI.month = '';
+  detailUI.limit = DETAIL_BATCH;
+  try { localStorage.setItem('dailyDetailRange', detailUI.range); } catch (e) {}
+  if (histData) renderDetail(histData);
+});
+$('#monthJump').addEventListener('change', e => {
+  detailUI.month = e.target.value;
+  detailUI.limit = DETAIL_BATCH;
+  if (histData) renderDetail(histData);
+});
+$('#loadMoreBtn').addEventListener('click', () => {
+  detailUI.limit += DETAIL_BATCH;
+  if (histData) renderDetail(histData);
+});
+$('#archColBtn').addEventListener('click', () => {
+  detailUI.showArchived = !detailUI.showArchived;
+  try { localStorage.setItem('dailyDetailShowArchived', detailUI.showArchived ? '1' : '0'); } catch (e) {}
+  if (histData) renderDetail(histData);
+});
+
+/* 每分钟刷新，保证跨天后当日状态正确 */
+setInterval(() => {
+  if ($('#tab-today').classList.contains('active')) refreshToday().catch(() => {});
+}, 60000);
+
+refreshToday().catch(e => toast(e.message));
+</script>
+</body>
+</html>
