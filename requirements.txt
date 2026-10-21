@@ -1,0 +1,4 @@
+# 每日打卡记录系统 —— 运行依赖
+# 安装：conda run -n work pip install -r requirements.txt
+Flask>=3.0
+openpyxl>=3.1
